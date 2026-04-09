@@ -630,8 +630,40 @@ function renderAdQuote(){
 }
 
 function addQuoteItem(){quoteItems.push({name:'',unit:'项',price:0,qty:1,cost:0,costNote:'',labor:''});saveQuoteItems();renderAdQuote()}
+function updateQuoteSummary(){
+    var total=0;quoteItems.forEach(function(it){total+=it.price*it.qty});
+    document.querySelectorAll('#aq-items input').forEach(function(inp){
+        var parts=inp.getAttribute('oninput').match(/updateQuoteItem\((\d+),'(\w+)'/);
+        if(!parts)return;var idx=parseInt(parts[1]),key=parts[2];
+        if(key==='price'||key==='qty'){var row=inp.closest('tr');var sub=quoteItems[idx].price*quoteItems[idx].qty;row.children[4].textContent=sub.toLocaleString('zh-CN');}
+    });
+    document.getElementById('aq-summary').innerHTML='<div style="background:var(--primary-light);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:600;color:var(--primary)">报价总计</span><span style="font-size:22px;font-weight:700;color:var(--primary)">¥ '+total.toLocaleString('zh-CN')+'</span></div>';
+    updateQuoteCost();
+}
+function updateQuoteCost(){
+    var totalRevenue=0,totalCost=0,totalLabor=0;
+    var costRows=document.querySelectorAll('#aq-cost-section tbody tr');
+    costRows.forEach(function(tr,idx){
+        if(idx>=quoteItems.length)return;var it=quoteItems[idx];
+        var sub=it.price*it.qty;var costSub=it.cost*it.qty;var labor=it.labor?parseFloat(it.labor)*it.qty:0;
+        var allCost=costSub+labor;var profit=sub-allCost;var rate=sub>0?Math.round(profit/sub*100):0;
+        totalRevenue+=sub;totalCost+=costSub;totalLabor+=labor;
+        var inputs=tr.querySelectorAll('input');
+        if(inputs.length>=2){inputs[0].value=it.cost||'';inputs[1].value=it.labor||'';}
+        tr.children[3].textContent=Math.round(allCost).toLocaleString('zh-CN');
+        tr.children[3].style.color='var(--danger)';
+        tr.children[4].textContent=sub.toLocaleString('zh-CN');
+        tr.children[5].textContent=Math.round(profit).toLocaleString('zh-CN');
+        tr.children[5].style.color=profit>=0?'var(--success)':'var(--danger)';
+        tr.children[6].textContent=rate+'%';
+        tr.children[6].style.color=rate>=30?'var(--success)':rate>=10?'var(--warning)':'var(--danger)';
+    });
+    var totalAllCost=totalCost+totalLabor,totalProfit=totalRevenue-totalAllCost,totalRate=totalRevenue>0?Math.round(totalProfit/totalRevenue*100):0;
+    var foot=document.querySelector('#aq-cost-section > div:last-child');
+    if(foot){foot.innerHTML='<div style="margin-top:12px;background:#f7fafc;border-radius:10px;padding:12px;font-size:13px;line-height:2"><div>总物料成本：<span style="color:var(--danger);font-weight:600">'+Math.round(totalCost).toLocaleString('zh-CN')+' 元</span>　|　总人工费：<span style="color:var(--warning);font-weight:600">'+Math.round(totalLabor).toLocaleString('zh-CN')+' 元</span>　|　总成本：<span style="color:var(--danger);font-weight:700">'+Math.round(totalAllCost).toLocaleString('zh-CN')+' 元</span></div><div>总报价：<span style="font-weight:700">'+totalRevenue.toLocaleString('zh-CN')+' 元</span>　|　总毛利：<span style="color:'+(totalProfit>=0?'var(--success)':'var(--danger)')+';font-weight:700">'+Math.round(totalProfit).toLocaleString('zh-CN')+' 元</span>　|　综合利润率：<span style="font-weight:700">'+totalRate+'%</span></div></div>';}
+}
 function removeQuoteItem(i){quoteItems.splice(i,1);saveQuoteItems();renderAdQuote()}
-function updateQuoteItem(i,key,val){if(key==='price'||key==='qty'||key==='cost')quoteItems[i][key]=parseFloat(val)||0;else quoteItems[i][key]=val;saveQuoteItems();renderAdQuote()}
+function updateQuoteItem(i,key,val){if(key==='price'||key==='qty'||key==='cost')quoteItems[i][key]=parseFloat(val)||0;else quoteItems[i][key]=val;saveQuoteItems();updateQuoteSummary()}
 function saveQuoteItems(){localStorage.setItem('bst_quote_items',JSON.stringify(quoteItems))}
 
 function exportQuotePDF(){
