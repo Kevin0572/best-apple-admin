@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>博思堂管理后台</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --primary: #2b6cb0;
+            --primary-light: #ebf4ff;
+            --success: #38a169;
+            --success-light: #f0fff4;
+            --warning: #d69e2e;
+            --warning-light: #fffff0;
+            --danger: #e53e3e;
+            --danger-light: #fff5f5;
+            --text: #1a202c;
+            --text-secondary: #718096;
+            --text-muted: #a0aec0;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,'PingFang SC','Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+        .container{max-width:960px;margin:0 auto;padding:16px}
+        .header{background:var(--card);border-radius:16px;padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:center}
+        .header-left h1{font-size:20px;color:var(--primary)}
+        .header-left .sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+        .header-right .date{font-size:13px;color:var(--text-secondary)}
+        .tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--card);border-radius:12px;padding:4px;box-shadow:var(--shadow)}
+        .tab{flex:1;padding:10px;text-align:center;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-secondary);background:transparent;transition:all .2s}
+        .tab.active{background:var(--primary);color:#fff}
+        .card{background:var(--card);border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
+        .card-title{font-size:15px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+        .card-title .actions{display:flex;gap:8px;flex-wrap:wrap}
+        .card-title .actions button{padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;cursor:pointer;color:var(--text-secondary);transition:all .2s;white-space:nowrap}
+        .card-title .actions button:hover{background:var(--primary-light);color:var(--primary);border-color:var(--primary)}
+        .card-title .actions button.primary-btn{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+        .kpi{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow);text-align:center}
+        .kpi .val{font-size:22px;font-weight:700}
+        .kpi .label{font-size:11px;color:var(--text-muted);margin-top:2px}
+        .kpi .badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;margin-top:4px;font-weight:500}
+        .badge-green{background:var(--success-light);color:var(--success)}
+        .badge-yellow{background:var(--warning-light);color:var(--warning)}
+        .badge-red{background:var(--danger-light);color:var(--danger)}
+        .badge-blue{background:var(--primary-light);color:var(--primary)}
+        .data-table{width:100%;border-collapse:collapse;font-size:13px}
+        .data-table th{text-align:left;padding:8px 10px;font-weight:600;color:var(--text-secondary);font-size:12px;border-bottom:2px solid var(--border)}
+        .data-table td{padding:10px;border-bottom:1px solid #f7fafc;vertical-align:middle}
+        .data-table tr:hover{background:var(--primary-light)}
+        .data-table .num{font-weight:600;font-variant-numeric:tabular-nums}
+        .status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;cursor:pointer}
+        .status-done{background:var(--success-light);color:var(--success)}
+        .status-doing{background:var(--warning-light);color:var(--warning)}
+        .status-todo{background:#edf2f7;color:var(--text-muted)}
+        .status-check{background:var(--primary-light);color:var(--primary)}
+        .type-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+        .type-hw{background:#f0fff4;color:#276749}
+        .type-ad{background:#ebf8ff;color:#2b6cb0}
+        .type-note{background:#fffff0;color:#975a16}
+        .type-other{background:#f7fafc;color:#718096}
+        .prog-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+        .prog-label{width:80px;font-size:13px;color:var(--text-secondary);flex-shrink:0}
+        .prog-bar{flex:1;height:8px;background:#edf2f7;border-radius:8px;overflow:hidden}
+        .prog-fill{height:100%;border-radius:8px;transition:width .5s}
+        .prog-fill.blue{background:var(--primary)}
+        .prog-fill.green{background:var(--success)}
+        .prog-fill.orange{background:var(--warning)}
+        .prog-fill.red{background:var(--danger)}
+        .prog-val{width:70px;text-align:right;font-size:13px;font-weight:600}
+        .form-group{margin-bottom:10px}
+        .form-label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px}
+        .form-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:border-color .2s}
+        .form-input:focus{border-color:var(--primary)}
+        .form-row{display:flex;gap:10px}
+        .form-row .form-group{flex:1}
+        .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+        .salary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+        .salary-card{background:var(--card);border-radius:12px;padding:16px;box-shadow:var(--shadow);border-top:3px solid var(--primary)}
+        .salary-card .role{font-size:12px;color:var(--text-muted)}
+        .salary-card .base{font-size:14px;color:var(--text-secondary);margin-top:4px}
+        .salary-card .comm{font-size:20px;font-weight:700;color:var(--primary);margin-top:4px}
+        .salary-card .total{font-size:24px;font-weight:700;color:var(--text);margin-top:8px}
+        .salary-card .total-label{font-size:11px;color:var(--text-muted)}
+        .salary-card .detail{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.6}
+        .salary-card .cost-line{color:var(--danger)}
+        .month-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
+        .month-nav button{width:32px;height:32px;border:1px solid var(--border);border-radius:50%;background:var(--card);cursor:pointer;font-size:14px}
+        .month-nav .ml{font-size:15px;font-weight:600;min-width:90px;text-align:center}
+        .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+        .toggle{display:flex;gap:4px}
+        .toggle button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;cursor:pointer;color:var(--text-secondary)}
+        .toggle button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .section{display:none}.section.active{display:block}
+        .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:100;align-items:center;justify-content:center}
+        .modal-overlay.show{display:flex}
+        .modal{background:var(--card);border-radius:16px;padding:24px;width:90%;max-width:520px;max-height:80vh;overflow-y:auto}
+        .modal h3{font-size:16px;margin-bottom:16px}
+        .modal .form-actions{display:flex;gap:10px;margin-top:16px}
+        .modal .form-actions button{flex:1;padding:10px;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500}
+        .btn-cancel{background:#edf2f7;color:var(--text-secondary)}
+        .btn-submit{background:var(--primary);color:#fff}
+        .benefit-section{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f0f0f0}
+        .benefit-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+        .benefit-header{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+        .benefit-header .bh-total{font-size:12px;color:var(--primary);font-weight:400}
+        .benefit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+        .benefit-grid .fg{margin-bottom:0}
+        .benefit-grid label{font-size:11px}
+        .benefit-grid input{padding:6px 8px;font-size:13px}
+        @media(max-width:600px){
+            .kpi-row{grid-template-columns:1fr 1fr}
+            .salary-grid{grid-template-columns:1fr}
+            .form-row-3{grid-template-columns:1fr 1fr}
+            .benefit-grid{grid-template-columns:1fr 1fr}
+            .header{flex-direction:column;align-items:flex-start;gap:8px}
+            .data-table{font-size:12px}
+            .data-table th,.data-table td{padding:6px}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="header-left"><h1>📊 博思堂管理后台</h1><div class="sub">薪酬计算 · 任务进度 · 记账对账</div></div>
+        <div class="header-right"><div class="date" id="today-date"></div></div>
+    </div>
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('overview')">📈 总览</button>
+        <button class="tab" onclick="switchTab('tasks')">📋 任务</button>
+        <button class="tab" onclick="switchTab('salary')">💰 薪资</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="section active" id="sec-overview">
+        <div class="month-nav"><button onclick="changeMonth(-1)">◀</button><span class="ml" id="ov-month"></span><button onclick="changeMonth(1)">▶</button></div>
+        <div class="kpi-row" id="ov-kpi"></div>
+        <div class="card"><div class="card-title">目标进度</div><div id="ov-progress"></div></div>
+        <div class="card"><div class="card-title">各岗位完成情况</div><div id="ov-byrole"></div></div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="section" id="sec-tasks">
+        <div class="toggle-row">
+            <span style="font-size:13px;color:var(--text-muted)">岗位：</span>
+            <div class="toggle">
+                <button class="active" onclick="filterRole('all',this)">全部</button>
+                <button onclick="filterRole('销售',this)">销售</button>
+                <button onclick="filterRole('策划',this)">策划</button>
+                <button onclick="filterRole('设计',this)">设计</button>
+            </div>
+            <span style="font-size:13px;color:var(--text-muted);margin-left:8px">类型：</span>
+            <div class="toggle">
+                <button class="active" onclick="filterType('all',this)">全部</button>
+                <button onclick="filterType('task',this)">任务</button>
+                <button onclick="filterType('note',this)">记账</button>
+            </div>
+        </div>
+        <div class="month-nav"><button onclick="changeMonth(-1)">◀</button><span class="ml" id="tk-month"></span><button onclick="changeMonth(1)">▶</button></div>
+        <div class="card">
+            <div class="card-title">记录列表
+                <div class="actions">
+                    <button onclick="openModal('task')">+ 新增任务</button>
+                    <button onclick="openModal('note')">+ 记一笔</button>
+                    <button class="primary-btn" onclick="exportCSV()">📥 导出本月</button>
+                </div>
+            </div>
+            <div id="tk-table"></div>
+        </div>
+    </div>
+
+    <!-- SALARY -->
+    <div class="section" id="sec-salary">
+        <div class="month-nav"><button onclick="changeMonth(-1)">◀</button><span class="ml" id="sl-month"></span><button onclick="changeMonth(1)">▶</button></div>
+        <div class="card">
+            <div class="card-title">广告业务（净收入 = 到账 - 成本，提成按净收入算）</div>
+            <div class="form-row-3">
+                <div class="form-group"><label class="form-label">广告到账金额（元）</label><input class="form-input" type="number" id="sl-ad" placeholder="0" oninput="calcSalary()"></div>
+                <div class="form-group"><label class="form-label">广告成本（元）</label><input class="form-input" type="number" id="sl-ad-cost" placeholder="印刷/制作/外包等" oninput="calcSalary()"></div>
+                <div class="form-group"><label class="form-label">广告净收入</label><div class="form-input" id="sl-ad-net" style="background:#f0fff4;color:var(--success);font-weight:600">0 元</div></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">好物严选（管理费+佣金合并算提成）</div>
+            <div class="form-row-3">
+                <div class="form-group"><label class="form-label">管理费收入（元）</label><input class="form-input" type="number" id="sl-hw-fee" placeholder="0" oninput="calcSalary()"></div>
+                <div class="form-group"><label class="form-label">订单佣金（元）</label><input class="form-input" type="number" id="sl-hw-comm" placeholder="0" oninput="calcSalary()"></div>
+                <div class="form-group"><label class="form-label">好物营业额</label><div class="form-input" id="sl-hw-total" style="background:#ebf8ff;color:var(--primary);font-weight:600">0 元</div></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">福利补贴（按人分别设置）</div>
+            <div id="benefit-fields"></div>
+        </div>
+        <div class="salary-grid" id="sl-result"></div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+        <h3 id="modal-title">新增记录</h3>
+        <div id="modal-task-fields">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">月份</label><select class="form-input" id="m-month"></select></div>
+                <div class="form-group"><label class="form-label">负责人</label><select class="form-input" id="m-role"><option value="销售">销售</option><option value="策划">策划</option><option value="设计">设计</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">任务类型</label><select class="form-input" id="m-type"><option value="好物-签约">好物-签约</option><option value="好物-运营">好物-运营</option><option value="好物-活动">好物-活动</option><option value="广告-交付">广告-交付</option><option value="广告-策划">广告-策划</option><option value="广告-设计">广告-设计</option><option value="其他">其他</option></select></div>
+                <div class="form-group"><label class="form-label">状态</label><select class="form-input" id="m-status"><option value="待开始">待开始</option><option value="进行中">进行中</option><option value="已完成">已完成</option><option value="已验收">已验收</option></select></div>
+            </div>
+            <div class="form-group"><label class="form-label">任务内容</label><input class="form-input" id="m-desc" placeholder="输入任务描述"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">截止日期</label><input class="form-input" type="date" id="m-deadline"></div>
+                <div class="form-group"><label class="form-label">关联业绩金额（选填）</label><input class="form-input" type="number" id="m-amount" placeholder="0"></div>
+            </div>
+        </div>
+        <div id="modal-note-fields" style="display:none">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">月份</label><select class="form-input" id="n-month"></select></div>
+                <div class="form-group"><label class="form-label">负责人</label><select class="form-input" id="n-role"><option value="销售">销售</option><option value="策划">策划</option><option value="设计">设计</option><option value="公司">公司</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">记账类型</label><select class="form-input" id="n-type"><option value="广告-收入">广告-收入</option><option value="广告-成本">广告-成本</option><option value="好物-收入">好物-收入</option><option value="好物-成本">好物-成本</option><option value="日常-支出">日常-支出</option><option value="其他">其他</option></select></div>
+                <div class="form-group"><label class="form-label">金额（元）</label><input class="form-input" type="number" id="n-amount" placeholder="正数收入，负数支出"></div>
+            </div>
+            <div class="form-group"><label class="form-label">备注说明</label><input class="form-input" id="n-desc" placeholder="例：某某客户活动物料印刷费"></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn-cancel" onclick="closeModal()">取消</button>
+            <button class="btn-submit" onclick="addRecord()">添加</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const BASE={'销售':3000,'策划':4000,'设计':3500};
+const AD_SHARE={'策划':0.4,'设计':0.3,'销售':0.3};
+const AD_TIERS=[{max:30000,r:0.02},{max:50000,r:0.03},{max:100000,r:0.04},{max:Infinity,r:0.05}];
+const HW_TIERS=[{max:10000,r:0.08},{max:30000,r:0.10},{max:50000,r:0.12},{max:Infinity,r:0.15}];
+const ROLES=['销售','策划','设计'];
+const BENEFIT_LABELS=['全勤奖','餐补','交通补贴','通讯补贴','其他补贴'];
+const BENEFIT_KEYS=['attend','meal','transport','phone','other'];
+const DEFAULT_BENEFITS={'销售':{attend:200,meal:300,transport:200,phone:100,other:0},'策划':{attend:200,meal:300,transport:0,phone:0,other:0},'设计':{attend:200,meal:300,transport:0,phone:0,other:0}};
+const MONTHLY_TARGETS={'2026-4':{ad:25000,shops:5,fee:0,comm:0},'2026-5':{ad:30000,shops:12,fee:2400,comm:100},'2026-6':{ad:35000,shops:16,fee:5280,comm:200},'2026-7':{ad:40000,shops:20,fee:7680,comm:300},'2026-8':{ad:50000,shops:20,fee:9600,comm:400},'2026-9':{ad:60000,shops:20,fee:9600,comm:500},'2026-10':{ad:50000,shops:22,fee:9600,comm:600},'2026-11':{ad:45000,shops:25,fee:10560,comm:700},'2026-12':{ad:55000,shops:25,fee:10560,comm:800}};
+const DEFAULT_TASKS=[
+    {id:1,month:'2026-04',role:'销售',type:'好物-签约',desc:'完成首批5家商家签约（首月免费体验）',status:'已完成',deadline:'2026-04-08',amount:0,isNote:false},
+    {id:2,month:'2026-04',role:'销售',type:'好物-运营',desc:'采集商家信息（执照、服务项目、价格）',status:'已完成',deadline:'2026-04-09',amount:0,isNote:false},
+    {id:3,month:'2026-04',role:'策划',type:'好物-活动',desc:'制定好物平台活动策划案（五一宠物节预热）',status:'进行中',deadline:'2026-04-15',amount:0,isNote:false},
+    {id:4,month:'2026-04',role:'设计',type:'好物-运营',desc:'好物平台上线物料设计',status:'待开始',deadline:'2026-04-15',amount:0,isNote:false},
+    {id:5,month:'2026-04',role:'设计',type:'广告-交付',desc:'广告客户设计交付 ×2',status:'待开始',deadline:'2026-04-20',amount:0,isNote:false},
+    {id:6,month:'2026-04',role:'策划',type:'广告-策划',desc:'广告客户活动策划 ×1',status:'待开始',deadline:'2026-04-20',amount:0,isNote:false},
+];
+
+function loadData(){try{const s=localStorage.getItem('bst_v3');if(s)return JSON.parse(s)}catch(e){}return{records:DEFAULT_TASKS,salary:{},benefits:{}}}
+function saveData(d){try{localStorage.setItem('bst_v3',JSON.stringify(d))}catch(e){}}
+let data=loadData(),curMonth=new Date(2026,3,1),curRole='all',curTypeFilter='all';
+let nextId=Math.max(...data.records.map(r=>r.id),0)+1;
+
+function mKey(){return`${curMonth.getFullYear()}-${String(curMonth.getMonth()+1).padStart(2,'0')}`}
+function mLabel(){return`${curMonth.getFullYear()}年${curMonth.getMonth()+1}月`}
+function fmt(n){return n.toLocaleString('zh-CN')}
+function pct(a,b){return b>0?Math.min(Math.round(a/b*100),150):0}
+function getTier(t,v){for(let i=0;i<t.length;i++)if(v<t[i].max)return t[i].r;return t[t.length-1].r}
+
+function switchTab(tab){document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['overview','tasks','salary'][i]===tab));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+tab).classList.add('active');render()}
+function changeMonth(d){curMonth.setMonth(curMonth.getMonth()+d);render()}
+function filterRole(f,el){curRole=f;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));el.classList.add('active');render()}
+function filterType(f,el){curTypeFilter=f;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));el.classList.add('active');render()}
+
+function getBenefits(k,role){
+    const db=data.benefits[k]||{};
+    const roleB=role?db[role]:null;
+    const def=DEFAULT_BENEFITS[role]||{attend:0,meal:0,transport:0,phone:0,other:0};
+    if(!roleB)return def;
+    // Merge: saved values override defaults
+    const merged={...def};
+    BENEFIT_KEYS.forEach(key=>{if(roleB[key]!==undefined)merged[key]=roleB[key]});
+    return merged;
+}
+function benefitTotal(b){return BENEFIT_KEYS.reduce((s,k)=>s+(b[k]||0),0)}
+
+function renderBenefitFields(){
+    const k=mKey();
+    const colors={'销售':'var(--success)','策划':'var(--primary)','设计':'var(--warning)'};
+    let html='';
+    ROLES.forEach(role=>{
+        const b=getBenefits(k,role);
+        const total=benefitTotal(b);
+        html+=`<div class="benefit-section">
+            <div class="benefit-header"><span style="color:${colors[role]}">${role}</span><span class="bh-total">小计：${fmt(total)} 元</span></div>
+            <div class="benefit-grid">`;
+        BENEFIT_KEYS.forEach((key,i)=>{
+            html+=`<div class="form-group fg"><label class="form-label">${BENEFIT_LABELS[i]}</label><input class="form-input" type="number" value="${b[key]||0}" data-role="${role}" data-key="${key}" oninput="onBenefitChange(this)"></div>`;
+        });
+        html+=`</div></div>`;
+    });
+    document.getElementById('benefit-fields').innerHTML=html;
+}
+
+function onBenefitChange(el){
+    const k=mKey(),role=el.dataset.role,key=el.dataset.key,val=parseInt(el.value)||0;
+    if(!data.benefits[k])data.benefits[k]={};
+    if(!data.benefits[k][role])data.benefits[k][role]={};
+    data.benefits[k][role][key]=val;
+    saveData(data);
+    // Update the subtotal for this role
+    const total=benefitTotal(data.benefits[k][role]);
+    el.closest('.benefit-section').querySelector('.bh-total').textContent='小计：'+fmt(total)+' 元';
+    calcSalary();
+}
+
+function renderOverview(){
+    const k=mKey();document.getElementById('ov-month').textContent=mLabel();
+    const records=data.records.filter(r=>r.month===k);
+    const tasks=records.filter(r=>!r.isNote);
+    const notes=records.filter(r=>r.isNote);
+    const target=MONTHLY_TARGETS[k]||{ad:0,shops:0,fee:0,comm:0};
+    const done=tasks.filter(t=>t.status==='已完成'||t.status==='已验收').length;
+    const total=tasks.length;
+    let adIncome=0,adCost=0,hwIncome=0;
+    notes.forEach(n=>{const a=n.amount||0;if(n.type==='广告-收入')adIncome+=a;if(n.type==='广告-成本')adCost+=Math.abs(a);if(n.type==='好物-收入')hwIncome+=a});
+    const s=data.salary[k]||{};
+    if(s.ad!==undefined)adIncome=s.ad;if(s.adCost!==undefined)adCost=s.adCost;
+    const adNet=adIncome-adCost;
+    document.getElementById('ov-kpi').innerHTML=`
+        <div class="kpi"><div class="val">${target.shops}</div><div class="label">签约目标</div></div>
+        <div class="kpi"><div class="val">${fmt(adIncome)}</div><div class="label">广告到账</div></div>
+        <div class="kpi"><div class="val">${done}/${total}</div><div class="label">任务完成</div><span class="badge ${total>0?(done/total>=0.8?'badge-green':done/total>=0.5?'badge-yellow':'badge-red'):'badge-blue'}">${total>0?Math.round(done/total*100)+'%':'-'}</span></div>
+        <div class="kpi"><div class="val" style="color:${adNet>=0?'var(--success)':'var(--danger)'}">${fmt(adNet)}</div><div class="label">广告净收入</div></div>`;
+    document.getElementById('ov-progress').innerHTML=`
+        <div class="prog-row"><span class="prog-label">任务</span><div class="prog-bar"><div class="prog-fill blue" style="width:${total>0?done/total*100:0}%"></div></div><span class="prog-val">${total>0?Math.round(done/total*100)+'%':'-'}</span></div>
+        <div class="prog-row"><span class="prog-label">广告到账</span><div class="prog-bar"><div class="prog-fill green" style="width:${pct(adIncome,target.ad)}%"></div></div><span class="prog-val">${fmt(adIncome)}</span></div>
+        <div class="prog-row"><span class="prog-label">广告净收入</span><div class="prog-bar"><div class="prog-fill ${adNet>=0?'green':'red'}" style="width:${adIncome>0?pct(adNet,adIncome):0}%"></div></div><span class="prog-val" style="color:${adNet>=0?'var(--success)':'var(--danger)'}">${fmt(adNet)}</span></div>
+        <div class="prog-row"><span class="prog-label">好物营收</span><div class="prog-bar"><div class="prog-fill orange" style="width:${pct(hwIncome,target.fee+target.comm)}%"></div></div><span class="prog-val">${fmt(hwIncome)}</span></div>`;
+    document.getElementById('ov-byrole').innerHTML=ROLES.map(r=>{const rt=tasks.filter(t=>t.role===r);const rd=rt.filter(t=>t.status==='已完成'||t.status==='已验收').length;return`<div class="prog-row"><span class="prog-label">${r}</span><div class="prog-bar"><div class="prog-fill ${r==='销售'?'green':r==='策划'?'blue':'orange'}" style="width:${rt.length>0?rd/rt.length*100:0}%"></div></div><span class="prog-val">${rd}/${rt.length}</span></div>`}).join('');
+}
+
+function renderTasks(){
+    const k=mKey();document.getElementById('tk-month').textContent=mLabel();
+    let records=data.records.filter(r=>r.month===k);
+    if(curRole!=='all')records=records.filter(r=>r.role===curRole);
+    if(curTypeFilter==='task')records=records.filter(r=>!r.isNote);
+    if(curTypeFilter==='note')records=records.filter(r=>r.isNote);
+    if(!records.length){document.getElementById('tk-table').innerHTML='<div style="text-align:center;color:var(--text-muted);padding:30px">暂无记录</div>';return}
+    const statusClass={'已完成':'status-done','进行中':'status-doing','待开始':'status-todo','已验收':'status-check'};
+    const typeClass=t=>t.startsWith('好物')?'type-hw':t.startsWith('广告')?'type-ad':t.startsWith('日常')?'type-note':'type-other';
+    let html=`<table class="data-table"><thead><tr><th>日期</th><th>负责人</th><th>类型</th><th>内容/备注</th><th>状态</th><th>金额</th><th>操作</th></tr></thead><tbody>`;
+    records.sort((a,b)=>(b.deadline||'').localeCompare(a.deadline||'')).forEach(r=>{
+        const isN=r.isNote,amt=r.amount||0;
+        const amtD=isN?`<span style="color:${amt>=0?'var(--success)':'var(--danger)'}">${amt>=0?'+':''}${fmt(amt)}</span>`:(amt>0?fmt(amt):'-');
+        html+=`<tr><td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${r.deadline?r.deadline.slice(5):'-'}</td><td>${r.role}</td><td><span class="type-tag ${typeClass(r.type)}">${r.type}</span></td><td>${r.desc}</td><td>${isN?'<span style="color:var(--text-muted);font-size:11px">记账</span>':`<span class="status ${statusClass[r.status]||''}" onclick="cycleStatus('${k}',${r.id})">${r.status}</span>`}</td><td class="num">${amtD}</td><td><button style="font-size:11px;color:var(--danger);border:none;background:none;cursor:pointer" onclick="delRecord('${k}',${r.id})">删除</button></td></tr>`;
+    });
+    html+='</tbody></table>';document.getElementById('tk-table').innerHTML=html;
+}
+
+function renderSalary(){
+    const k=mKey();document.getElementById('sl-month').textContent=mLabel();
+    const s=data.salary[k]||{};
+    document.getElementById('sl-ad').value=s.ad||'';
+    document.getElementById('sl-ad-cost').value=s.adCost||'';
+    document.getElementById('sl-hw-fee').value=s.hwFee||'';
+    document.getElementById('sl-hw-comm').value=s.hwComm||'';
+    renderBenefitFields();
+    calcSalary();
+}
+
+function calcSalary(){
+    const k=mKey();
+    const ad=parseInt(document.getElementById('sl-ad').value)||0;
+    const adCost=parseInt(document.getElementById('sl-ad-cost').value)||0;
+    const hwFee=parseInt(document.getElementById('sl-hw-fee').value)||0;
+    const hwComm=parseInt(document.getElementById('sl-hw-comm').value)||0;
+    const adNet=Math.max(ad-adCost,0);
+    const hwTotal=hwFee+hwComm;
+    document.getElementById('sl-ad-net').textContent=fmt(adNet)+' 元';
+    document.getElementById('sl-ad-net').style.color=adNet>=0?'var(--success)':'var(--danger)';
+    document.getElementById('sl-hw-total').textContent=fmt(hwTotal)+' 元';
+    data.salary[k]={ad,adCost,hwFee,hwComm};saveData(data);
+    const adRate=getTier(AD_TIERS,adNet),hwRate=getTier(HW_TIERS,hwTotal);
+    const adCommTotal=adNet*adRate,hwCommTotal=hwTotal*hwRate;
+    const colors={'销售':'var(--success)','策划':'var(--primary)','设计':'var(--warning)'};
+    const shareDesc={'销售':'30%','策划':'40%','设计':'30%'};
+    document.getElementById('sl-result').innerHTML=ROLES.map(role=>{
+        const base=BASE[role],b=getBenefits(k,role),bt=benefitTotal(b);
+        const adP=adCommTotal*AD_SHARE[role];
+        const hwP=role==='销售'?hwCommTotal:0;
+        const comm=adP+hwP,total=base+comm+bt;
+        let detail=`广告提成 ${fmt(Math.round(adP))}（净收入 ${fmt(adNet)} × ${adRate*100}% × ${shareDesc[role]}）`;
+        if(hwP>0)detail+=`<br>好物提成 ${fmt(Math.round(hwP))}（营业额 ${fmt(hwTotal)} × ${hwRate*100}%）`;
+        let benParts=[];BENEFIT_KEYS.forEach((key,i)=>{if(b[key])benParts.push(BENEFIT_LABELS[i]+fmt(b[key]))});
+        if(benParts.length)detail+=`<br>补贴 ${fmt(bt)}（${benParts.join('+')}）`;
+        detail+=`<br><span class="cost-line">到手估算 ≈ ${fmt(Math.round(total*0.9))}（扣个人社保约10%）</span>`;
+        return`<div class="salary-card" style="border-top-color:${colors[role]}"><div class="role">${role}</div><div class="base">底薪 ${fmt(base)}</div><div class="comm">${fmt(Math.round(comm))}<span style="font-size:12px;font-weight:400;color:var(--text-muted)"> 提成</span></div><div class="total">${fmt(Math.round(total))}</div><div class="total-label">应发工资</div><div class="detail">${detail}</div></div>`;
+    }).join('');
+}
+
+function cycleStatus(month,id){const r=data.records.find(r=>r.month===month&&r.id===id);if(!r||r.isNote)return;const flow=['待开始','进行中','已完成','已验收'];r.status=flow[(flow.indexOf(r.status)+1)%flow.length];saveData(data);render()}
+function delRecord(month,id){if(!confirm('确认删除？'))return;data.records=data.records.filter(r=>!(r.month===month&&r.id===id));saveData(data);render()}
+
+function openModal(type){
+    document.getElementById('modal').classList.add('show');
+    document.getElementById('modal').dataset.type=type;
+    if(type==='task'){document.getElementById('modal-title').textContent='新增任务';document.getElementById('modal-task-fields').style.display='block';document.getElementById('modal-note-fields').style.display='none'}
+    else{document.getElementById('modal-title').textContent='记一笔';document.getElementById('modal-task-fields').style.display='none';document.getElementById('modal-note-fields').style.display='block'}
+    const sel=document.getElementById(type==='task'?'m-month':'n-month');
+    sel.innerHTML='';
+    for(let m=1;m<=12;m++)sel.innerHTML+=`<option value="2026-${String(m).padStart(2,'0')}" ${mKey()===`2026-${String(m).padStart(2,'0')}`?'selected':''}>2026年${m}月</option>`;
+    document.getElementById('m-desc').value='';document.getElementById('m-amount').value='';document.getElementById('m-deadline').value='';
+    document.getElementById('n-desc').value='';document.getElementById('n-amount').value='';
+}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+function addRecord(){
+    const type=document.getElementById('modal').dataset.type;
+    if(type==='task'){const desc=document.getElementById('m-desc').value.trim();if(!desc){alert('请输入任务内容');return};data.records.push({id:nextId++,month:document.getElementById('m-month').value,role:document.getElementById('m-role').value,type:document.getElementById('m-type').value,desc,status:document.getElementById('m-status').value,deadline:document.getElementById('m-deadline').value||'',amount:parseInt(document.getElementById('m-amount').value)||0,isNote:false})}
+    else{const desc=document.getElementById('n-desc').value.trim();if(!desc){alert('请输入备注说明');return};data.records.push({id:nextId++,month:document.getElementById('n-month').value,role:document.getElementById('n-role').value,type:document.getElementById('n-type').value,desc,status:'已完成',deadline:new Date().toISOString().slice(0,10),amount:parseInt(document.getElementById('n-amount').value)||0,isNote:true})}
+    saveData(data);closeModal();render();
+}
+
+function exportCSV(){
+    const k=mKey(),records=data.records.filter(r=>r.month===k);
+    if(!records.length){alert('本月暂无记录');return}
+    const BOM='\uFEFF';let csv=BOM+'日期,负责人,类型,内容/备注,状态,金额\n';
+    records.sort((a,b)=>(b.deadline||'').localeCompare(a.deadline||'')).forEach(r=>{csv+=`${r.deadline||''},${r.role},${r.type},"${r.desc}",${r.isNote?'记账':r.status},${r.isNote?(r.amount||''):(r.amount||'')}\n`});
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement('a');
+    link.href=URL.createObjectURL(blob);link.download=`博思堂_${mLabel()}_对账单.csv`;link.click();
+}
+
+function render(){renderOverview();renderTasks();renderSalary()}
+document.getElementById('today-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+render();
+</script>
+</body>
+</html>
