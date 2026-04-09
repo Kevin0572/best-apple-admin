@@ -132,6 +132,7 @@
         <button class="tab active" onclick="switchTab('overview')">📈 总览</button>
         <button class="tab" onclick="switchTab('tasks')">📋 任务</button>
         <button class="tab" onclick="switchTab('salary')">💰 薪资</button>
+        <button class="tab" onclick="switchTab('quote')">📖 报价</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -197,6 +198,26 @@
         </div>
         <div class="salary-grid" id="sl-result"></div>
     </div>
+
+    <!-- QUOTE -->
+    <div class="section" id="sec-quote">
+        <div class="card">
+            <div class="card-title">设计类报价参考表（2026版）
+                <div class="actions">
+                    <button onclick="exportQuote()">📥 导出报价表</button>
+                </div>
+            </div>
+            <div id="quote-table"></div>
+        </div>
+        <div class="card" style="font-size:12px;color:var(--text-muted);line-height:1.8">
+            <strong style="color:var(--text-secondary)">备注：</strong><br>
+            · 以上为设计费，不含印刷制作成本<br>
+            · 复杂项目（如3D建模、手绘插画）价格另议<br>
+            · 加急项目加收30%-50%<br>
+            · 修改次数：一般项目3次内免费，超出每次加收100-200<br>
+            · 商家入驻好物平台的物料设计可享受会员价（8折）
+        </div>
+    </div>
 </div>
 
 <!-- Modal -->
@@ -246,6 +267,52 @@ const BENEFIT_LABELS=['全勤奖','餐补','交通补贴','通讯补贴','其他
 const BENEFIT_KEYS=['attend','meal','transport','phone','other'];
 const DEFAULT_BENEFITS={'销售':{attend:200,meal:300,transport:200,phone:100,other:0},'策划':{attend:200,meal:300,transport:0,phone:0,other:0},'设计':{attend:200,meal:300,transport:0,phone:0,other:0}};
 const MONTHLY_TARGETS={'2026-4':{ad:25000,shops:5,fee:0,comm:0},'2026-5':{ad:30000,shops:12,fee:2400,comm:100},'2026-6':{ad:35000,shops:16,fee:5280,comm:200},'2026-7':{ad:40000,shops:20,fee:7680,comm:300},'2026-8':{ad:50000,shops:20,fee:9600,comm:400},'2026-9':{ad:60000,shops:20,fee:9600,comm:500},'2026-10':{ad:50000,shops:22,fee:9600,comm:600},'2026-11':{ad:45000,shops:25,fee:10560,comm:700},'2026-12':{ad:55000,shops:25,fee:10560,comm:800}};
+const QUOTE_DATA=[
+  {cat:'品牌设计',items:[
+    {name:'Logo设计',price:'800-3,000',note:'简洁版800起，含VI规范3,000起'},
+    {name:'VI视觉识别系统',price:'3,000-8,000',note:'基础版3个应用面，完整版10个以上'},
+    {name:'品牌手册/画册设计',price:'2,000-5,000',note:'A4内页8-16P，含封面封底'},
+    {name:'企业宣传册',price:'1,500-4,000',note:'8-12P单折页或骑马钉'},
+    {name:'包装设计',price:'500-3,000',note:'单品包装500起，系列包装面议'},
+    {name:'名片设计',price:'100-300',note:'含正反面，出3稿选1'},
+  ]},
+  {cat:'广告物料',items:[
+    {name:'传单/单页',price:'200-500',note:'A4/A5单面，含设计+排版'},
+    {name:'海报设计',price:'300-800',note:'A3/A2，含出血位'},
+    {name:'易拉宝/X展架',price:'200-400',note:'80×200cm标准尺寸'},
+    {name:'横幅/条幅',price:'100-200',note:'按米计费，含排版'},
+    {name:'吊旗/三角旗',price:'150-300',note:'一套含3-5个尺寸'},
+    {name:'道旗/刀旗',price:'200-400',note:'含排版设计，不含制作'},
+    {name:'桌牌/台卡',price:'100-200',note:'A4或自定义尺寸'},
+    {name:'地贴/墙贴',price:'150-300',note:'按面积计费'},
+    {name:'展板/展架',price:'300-600',note:'标准展板或异形展架'},
+  ]},
+  {cat:'线上设计',items:[
+    {name:'公众号封面图',price:'100-200',note:'首条/次条封面+次条'},
+    {name:'公众号长图文排版',price:'200-500',note:'含配图排版，不含文案'},
+    {name:'朋友圈海报',price:'150-300',note:'含文案排版设计'},
+    {name:'小红书图文',price:'200-400',note:'含6-9图排版'},
+    {name:'H5页面设计',price:'500-2,000',note:'3-5页基础版，复杂交互面议'},
+    {name:'短视频封面/片头',price:'200-500',note:'抖音/视频号封面'},
+    {name:'电商主图/详情页',price:'300-800',note:'淘宝/拼多多5张主图+详情页'},
+  ]},
+  {cat:'活动物料',items:[
+    {name:'活动主视觉KV',price:'500-1,500',note:'含1张主图+应用延展'},
+    {name:'活动海报系列',price:'800-2,000',note:'3-5张系列海报'},
+    {name:'签到背景板',price:'300-600',note:'含设计+出血位'},
+    {name:'舞台背景板',price:'500-1,000',note:'按尺寸计费'},
+    {name:'证书/奖状设计',price:'100-200',note:'含模板'},
+    {name:'邀请函设计',price:'150-300',note:'电子版/纸质版'},
+  ]},
+  {cat:'空间/环境',items:[
+    {name:'门头/店招设计',price:'500-1,500',note:'含效果图'},
+    {name:'室内导视系统',price:'1,000-3,000',note:'按点位计费'},
+    {name:'文化墙设计',price:'800-2,000',note:'含效果图'},
+    {name:'门店空间视觉',price:'2,000-5,000',note:'含3D效果图'},
+    {name:'展厅/展台设计',price:'2,000-8,000',note:'按面积计费'},
+  ]},
+];
+
 const DEFAULT_TASKS=[
     {id:1,month:'2026-04',role:'销售',type:'好物-签约',desc:'完成首批5家商家签约（首月免费体验）',status:'已完成',deadline:'2026-04-08',amount:0,isNote:false},
     {id:2,month:'2026-04',role:'销售',type:'好物-运营',desc:'采集商家信息（执照、服务项目、价格）',status:'已完成',deadline:'2026-04-09',amount:0,isNote:false},
@@ -266,7 +333,7 @@ function fmt(n){return n.toLocaleString('zh-CN')}
 function pct(a,b){return b>0?Math.min(Math.round(a/b*100),150):0}
 function getTier(t,v){for(let i=0;i<t.length;i++)if(v<t[i].max)return t[i].r;return t[t.length-1].r}
 
-function switchTab(tab){document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['overview','tasks','salary'][i]===tab));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+tab).classList.add('active');render()}
+function switchTab(tab){document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['overview','tasks','salary','quote'][i]===tab));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+tab).classList.add('active');render()}
 function changeMonth(d){curMonth.setMonth(curMonth.getMonth()+d);render()}
 function filterRole(f,el){curRole=f;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));el.classList.add('active');render()}
 function filterType(f,el){curTypeFilter=f;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));el.classList.add('active');render()}
@@ -429,7 +496,29 @@ function exportCSV(){
     link.href=URL.createObjectURL(blob);link.download=`博思堂_${mLabel()}_对账单.csv`;link.click();
 }
 
-function render(){renderOverview();renderTasks();renderSalary()}
+function render(){renderOverview();renderTasks();renderSalary();renderQuote()}
+
+function renderQuote(){
+    var cc={'品牌设计':'var(--primary)','广告物料':'var(--success)','线上设计':'var(--warning)','活动物料':'#e53e3e','空间/环境':'#805ad5'};
+    var h='';
+    QUOTE_DATA.forEach(function(cat){
+        h+='<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:'+cc[cat.cat]+';margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid '+cc[cat.cat]+'">'+cat.cat+'</div>';
+        h+='<table class="data-table"><thead><tr><th style="width:40%">项目</th><th style="width:25%">参考价格（元）</th><th>说明</th></tr></thead><tbody>';
+        cat.items.forEach(function(item){
+            h+='<tr><td style="font-weight:500">'+item.name+'</td><td class="num" style="color:var(--warning)">'+item.price+'</td><td style="color:var(--text-muted);font-size:12px">'+item.note+'</td></tr>';
+        });
+        h+='</tbody></table></div>';
+    });
+    document.getElementById('quote-table').innerHTML=h;
+}
+
+function exportQuote(){
+    var BOM='\uFEFF',csv=BOM+'类别,项目,参考价格（元）,说明\n';
+    QUOTE_DATA.forEach(function(cat){cat.items.forEach(function(item){csv+=cat.cat+','+item.name+','+item.price+','+item.note+'\n'})});
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});var link=document.createElement('a');
+    link.href=URL.createObjectURL(blob);link.download='博思堂设计报价参考表.csv';link.click();
+}
+
 document.getElementById('today-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
 render();
 </script>
