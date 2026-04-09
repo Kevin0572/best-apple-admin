@@ -95,6 +95,16 @@
         .toggle button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;cursor:pointer;color:var(--text-secondary)}
         .toggle button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
         .section{display:none}.section.active{display:block}
+        .suggest-wrap{position:relative}
+        .suggest-list{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:50;max-height:240px;overflow-y:auto;display:none}
+        .suggest-list.show{display:block}
+        .suggest-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0;transition:background .15s}
+        .suggest-item:last-child{border-bottom:none}
+        .suggest-item:hover,.suggest-item.active{background:var(--primary-light)}
+        .suggest-item .si-name{font-weight:600;color:var(--text)}
+        .suggest-item .si-cost{font-size:11px;color:var(--text-muted);margin-top:2px}
+        .suggest-item .si-price{font-size:11px;color:var(--warning);margin-top:1px}
+        .suggest-empty{padding:12px;text-align:center;color:var(--text-muted);font-size:12px}
         .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:100;align-items:center;justify-content:center}
         .modal-overlay.show{display:flex}
         .modal{background:var(--card);border-radius:16px;padding:24px;width:90%;max-width:520px;max-height:80vh;overflow-y:auto}
@@ -588,7 +598,7 @@ function renderAdQuote(){
     quoteItems.forEach(function(item,i){
         var sub=item.price*item.qty;
         total+=sub;
-        h+='<tr><td><input class="form-input" style="min-width:120px" value="'+item.name+'" placeholder="选择或输入" onchange="updateQuoteItem('+i+',\'name\',this.value)"></td>';
+        h+='<tr><td><div class="suggest-wrap"><input class="form-input" style="min-width:120px" value="'+item.name+'" placeholder="输入项目名称..." onchange="updateQuoteItem('+i+',\'name\',this.value)" oninput="showSuggest(this,'+i+')" onblur="setTimeout(function(){hideSuggest('+i+')},200)"></div><div class="suggest-list" id="suggest-'+i+'"></div></td>';
         h+='<td><input class="form-input" style="width:60px" value="'+item.unit+'" onchange="updateQuoteItem('+i+',\'unit\',this.value)"></td>';
         h+='<td><input class="form-input" style="width:80px" type="number" value="'+item.price+'" oninput="updateQuoteItem('+i+',\'price\',this.value)"></td>';
         h+='<td><input class="form-input" style="width:60px" type="number" value="'+item.qty+'" oninput="updateQuoteItem('+i+',\'qty\',this.value)"></td>';
@@ -658,6 +668,41 @@ function recalcTotals(){
 function removeQuoteItem(i){quoteItems.splice(i,1);saveQuoteItems();renderAdQuote()}
 function updateQuoteItem(i,key,val){if(key==='price'||key==='qty'||key==='cost'||key==='labor')quoteItems[i][key]=parseFloat(val)||0;else quoteItems[i][key]=val;saveQuoteItems();if(key==='price'||key==='qty'||key==='cost'||key==='labor'){recalcRow(i);recalcTotals()}}
 function saveQuoteItems(){localStorage.setItem('bst_quote_items',JSON.stringify(quoteItems))}
+
+function searchQuoteData(keyword){
+    if(!keyword||keyword.length<1)return[];
+    keyword=keyword.toLowerCase();
+    var results=[];
+    QUOTE_DATA.forEach(function(cat){
+        cat.items.forEach(function(item){
+            if(item.name.toLowerCase().indexOf(keyword)!==-1){
+                results.push({name:item.name,price:item.price,cost:item.materialCost,cat:cat.cat});
+            }
+        });
+    });
+    return results.slice(0,8);
+}
+function showSuggest(inp,idx){
+    var list=document.getElementById('suggest-'+idx);
+    if(!list)return;
+    var results=searchQuoteData(inp.value);
+    if(!results.length){list.className='suggest-list';list.innerHTML='<div class="suggest-empty">无匹配</div>';return;}
+    var h='';
+    results.forEach(function(r){
+        h+='<div class="suggest-item" onmousedown="pickSuggest('+idx+',\''+r.name.replace(/'/g,"\\'")+'\')">';
+        h+='<div class="si-name">'+r.name+'<span style="font-size:11px;color:var(--text-muted);margin-left:6px">'+r.cat+'</span></div>';
+        h+='<div class="si-cost">成本：'+r.cost+'</div>';
+        h+='<div class="si-price">参考报价：'+r.price+' 元</div></div>';
+    });
+    list.innerHTML=h;list.className='suggest-list show';
+}
+function hideSuggest(idx){var list=document.getElementById('suggest-'+idx);if(list)list.className='suggest-list';}
+function pickSuggest(idx,name){
+    quoteItems[idx].name=name;saveQuoteItems();
+    var rows=document.querySelectorAll('#aq-items tbody tr');
+    if(rows[idx]){rows[idx].querySelector('input').value=name;}
+    hideSuggest(idx);
+}
 
 function exportQuotePDF(){
     var client=document.getElementById('aq-client').value||'客户';
