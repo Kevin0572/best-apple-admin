@@ -135,6 +135,36 @@
         .benefit-grid .fg{margin-bottom:0}
         .benefit-grid label{font-size:11px}
         .benefit-grid input{padding:6px 8px;font-size:13px}
+        .quote-summary-toggle{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--primary-light);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:var(--primary);margin-bottom:14px;user-select:none}
+        .quote-summary-toggle .arrow{transition:transform .2s;font-size:12px}
+        .quote-summary-toggle.open .arrow{transform:rotate(90deg)}
+        .quote-summary-body{display:none;margin-bottom:14px}
+        .quote-summary-body.show{display:block}
+        .qo-card{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid var(--primary)}
+        .qo-card.qo-draft{border-left-color:var(--warning)}
+        .qo-card.qo-confirmed{border-left-color:var(--success)}
+        .qo-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+        .qo-client{font-weight:600;font-size:14px}
+        .qo-meta{font-size:12px;color:var(--text-muted)}
+        .qo-amount{font-size:15px;font-weight:700;color:var(--primary)}
+        .qo-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+        .qo-actions button{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;cursor:pointer;color:var(--text-secondary);transition:all .2s}
+        .qo-actions button:hover{border-color:var(--primary);color:var(--primary)}
+        .qo-actions button.btn-confirm{background:var(--success);color:#fff;border-color:var(--success)}
+        .qo-actions button.btn-danger{color:var(--danger);border-color:var(--danger)}
+        .payment-section{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+        .payment-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;font-size:12px}
+        .payment-row input{padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none}
+        .payment-row input:focus{border-color:var(--primary)}
+        .comm-summary{margin-top:10px;padding:10px;background:var(--primary-light);border-radius:8px;font-size:12px;line-height:1.8}
+        .comm-summary strong{color:var(--primary)}
+        .qo-status-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+        .qo-status-draft{background:var(--warning-light);color:var(--warning)}
+        .qo-status-confirmed{background:var(--success-light);color:var(--success)}
+        .qo-status-unpaid{background:var(--danger-light);color:var(--danger)}
+        .qo-status-partial{background:var(--warning-light);color:var(--warning)}
+        .qo-status-full{background:var(--success-light);color:var(--success)}
+        .qo-editing-bar{background:var(--warning-light);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--warning);display:flex;justify-content:space-between;align-items:center}
         @media(max-width:600px){
             .kpi-row{grid-template-columns:1fr 1fr}
             .salary-grid{grid-template-columns:1fr}
@@ -228,8 +258,11 @@
 
     <!-- AD QUOTE -->
     <div class="section" id="sec-adquote">
+        <div class="quote-summary-toggle" onclick="toggleQuoteSummary()"><span class="arrow">▶</span> 报价汇总 (<span id="qo-count">0</span>)</div>
+        <div class="quote-summary-body" id="qo-summary-body"></div>
+        <div id="qo-editing-bar" style="display:none"></div>
         <div class="card">
-            <div class="card-title">📄 广告报价单（客户版）</div>
+            <div class="card-title">📄 广告报价单（客户版）<div class="actions"><button onclick="saveQuoteOrder()" class="primary-btn">💾 保存报价单</button><button onclick="clearQuoteForm()" id="btn-new-quote" style="display:none">＋ 新建报价</button></div></div>
             <div class="form-row">
                 <div class="form-group"><label class="form-label">客户名称</label><input class="form-input" id="aq-client" placeholder="例：某某宠物店"></div>
                 <div class="form-group"><label class="form-label">报价日期</label><input class="form-input" type="date" id="aq-date"></div>
@@ -868,7 +901,200 @@ function exportDesignCSV(){
 function exportQuote(){exportDesignCSV()}
 
 document.getElementById('today-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+
+/* ===== 报价单管理 ===== */
+var editingOrderId=null;
+
+function getQuoteOrders(){
+    try{return JSON.parse(localStorage.getItem('bst_quote_orders')||'[]')}catch(e){return[]}
+}
+function saveQuoteOrders(orders){localStorage.setItem('bst_quote_orders',JSON.stringify(orders))}
+function cleanOldOrders(){
+    var orders=getQuoteOrders(),now=Date.now(),sixMonths=180*86400000;
+    var cleaned=orders.filter(function(o){if(o.status==='confirmed'){var paid=o.payments.reduce(function(s,p){return s+(p.amount||0)},0);if(paid>=(o.total||0))return(now-o.createdAt)<sixMonths;return true}return(now-o.createdAt)<sixMonths});
+    saveQuoteOrders(cleaned);
+}
+
+function saveQuoteOrder(){
+    var client=document.getElementById('aq-client').value.trim();
+    if(!client){alert('请输入客户名称');return}
+    if(!quoteItems.length||!quoteItems[0].name){alert('请至少添加一个报价项目');return}
+    var total=0,totalCost=0,totalLabor=0;
+    var items=quoteItems.map(function(it){var sub=it.price*it.qty;total+=sub;totalCost+=it.cost*it.qty;totalLabor+=(it.labor?parseFloat(it.labor)*it.qty:0);return{name:it.name,unit:it.unit,price:it.price,qty:it.qty,cost:it.cost,costNote:it.costNote,labor:it.labor||''}});
+    var order={id:editingOrderId||Date.now(),client:client,date:document.getElementById('aq-date').value,valid:document.getElementById('aq-valid').value||'30',items:items,total:total,totalCost:totalCost,totalLabor:totalLabor,status:'draft',payments:[],createdAt:editingOrderId?(getQuoteOrders().find(function(o){return o.id===editingOrderId})||{}).createdAt:Date.now(),confirmedAt:null};
+    var orders=getQuoteOrders();
+    if(editingOrderId){var idx=orders.findIndex(function(o){return o.id===editingOrderId});if(idx>=0)orders[idx]=order}else{orders.push(order)}
+    saveQuoteOrders(orders);
+    editingOrderId=null;
+    clearQuoteForm();
+    renderQuoteSummary();
+}
+
+function clearQuoteForm(){
+    editingOrderId=null;
+    quoteItems=[{name:'',unit:'项',price:0,qty:1,cost:0,costNote:'',labor:''}];
+    saveQuoteItems();
+    document.getElementById('aq-client').value='';
+    document.getElementById('aq-valid').value='30';
+    document.getElementById('btn-new-quote').style.display='none';
+    var bar=document.getElementById('qo-editing-bar');bar.style.display='none';
+    renderAdQuote();
+}
+
+function loadQuoteOrder(id){
+    var orders=getQuoteOrders(),order=orders.find(function(o){return o.id===id});
+    if(!order||order.status!=='draft')return;
+    editingOrderId=id;
+    quoteItems=order.items.map(function(it){return{name:it.name,unit:it.unit,price:it.price,qty:it.qty,cost:it.cost,costNote:it.costNote,labor:it.labor||''}});
+    saveQuoteItems();
+    document.getElementById('aq-client').value=order.client;
+    document.getElementById('aq-date').value=order.date;
+    document.getElementById('aq-valid').value=order.valid;
+    document.getElementById('btn-new-quote').style.display='';
+    document.getElementById('qo-editing-bar').innerHTML='<div>正在编辑：'+escHtml(order.client)+' 的报价单</div><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;cursor:pointer" onclick="clearQuoteForm()">取消编辑</button>';
+    document.getElementById('qo-editing-bar').style.display='flex';
+    renderAdQuote();
+}
+
+function confirmQuoteOrder(id){
+    if(!confirm('确认执行后将锁定报价内容，不可修改。确认？'))return;
+    var orders=getQuoteOrders(),order=orders.find(function(o){return o.id===id});
+    if(!order)return;
+    order.status='confirmed';order.confirmedAt=Date.now();
+    saveQuoteOrders(orders);
+    if(editingOrderId===id){editingOrderId=null;clearQuoteForm()}
+    renderQuoteSummary();
+}
+
+function deleteQuoteOrder(id){
+    if(!confirm('确认删除该报价单？'))return;
+    var orders=getQuoteOrders().filter(function(o){return o.id!==id});
+    saveQuoteOrders(orders);
+    if(editingOrderId===id)clearQuoteForm();
+    renderQuoteSummary();
+}
+
+function addPayment(orderId){
+    var orders=getQuoteOrders(),order=orders.find(function(o){return o.id===orderId});
+    if(!order)return;
+    var amtInput=document.getElementById('pay-amt-'+orderId);
+    var dateInput=document.getElementById('pay-date-'+orderId);
+    var amt=parseFloat(amtInput.value)||0;
+    if(amt<=0){alert('请输入回款金额');return}
+    order.payments.push({amount:amt,date:dateInput.value||new Date().toISOString().slice(0,10),id:Date.now()});
+    saveQuoteOrders(orders);
+    renderQuoteSummary();
+}
+
+function deletePayment(orderId,payId){
+    var orders=getQuoteOrders(),order=orders.find(function(o){return o.id===orderId});
+    if(!order)return;
+    order.payments=order.payments.filter(function(p){return p.id!==payId});
+    saveQuoteOrders(orders);
+    renderQuoteSummary();
+}
+
+function toggleQuoteSummary(){
+    var toggle=document.querySelector('.quote-summary-toggle');
+    var body=document.getElementById('qo-summary-body');
+    toggle.classList.toggle('open');
+    body.classList.toggle('show');
+}
+
+function renderQuoteSummary(){
+    cleanOldOrders();
+    var orders=getQuoteOrders();
+    document.getElementById('qo-count').textContent=orders.length;
+    if(!orders.length){document.getElementById('qo-summary-body').innerHTML='<div class="card" style="text-align:center;color:var(--text-muted);padding:24px;font-size:13px">暂无保存的报价单</div>';return}
+    orders.sort(function(a,b){return b.createdAt-a.createdAt});
+    var html='<div class="card" style="padding:12px">';
+    orders.forEach(function(o){
+        var paid=o.payments.reduce(function(s,p){return s+(p.amount||0)},0);
+        var pct=o.total>0?Math.round(paid/o.total*100):0;
+        var payStatus=pct>=100?'full':paid>0?'partial':'unpaid';
+        var payStatusText=payStatus==='unpaid'?'未收款':payStatus==='full'?'全部回款':'部分回款';
+        html+='<div class="qo-card qo-'+o.status+'">';
+        html+='<div class="qo-header"><div><span class="qo-client">'+escHtml(o.client)+'</span> <span class="qo-status-tag qo-status-'+o.status+'">'+(o.status==='draft'?'草稿':'已确认')+'</span>';
+        if(o.status==='confirmed')html+=' <span class="qo-status-tag qo-status-'+payStatus+'">'+payStatusText+'</span>';
+        html+='</div><div class="qo-amount">¥ '+fmt(o.total)+'</div></div>';
+        html+='<div class="qo-meta">'+o.date+'　有效期'+o.valid+'天</div>';
+        // Actions
+        if(o.status==='draft'){
+            html+='<div class="qo-actions"><button onclick="loadQuoteOrder('+o.id+')">✏️ 编辑</button><button class="btn-confirm" onclick="confirmQuoteOrder('+o.id+')">✅ 确认执行</button><button class="btn-danger" onclick="deleteQuoteOrder('+o.id+')">🗑️ 删除</button></div>';
+        }else{
+            // Payment progress bar
+            html+='<div class="payment-section">';
+            html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:12px;color:var(--text-secondary)">回款进度</span><div class="prog-bar" style="flex:1;height:6px"><div class="prog-fill '+(pct>=100?'green':'orange')+'" style="width:'+Math.min(pct,100)+'%"></div></div><span style="font-size:12px;font-weight:600;color:var(--primary)">'+fmt(paid)+' / '+fmt(o.total)+' ('+pct+'%)</span></div>';
+            // Add payment form
+            html+='<div class="payment-row"><input type="number" id="pay-amt-'+o.id+'" placeholder="回款金额" style="width:100px"><input type="date" id="pay-date-'+o.id+'" style="width:130px" value="'+new Date().toISOString().slice(0,10)+'"><button style="padding:4px 10px;border:1px solid var(--primary);border-radius:6px;background:var(--primary);color:#fff;font-size:11px;cursor:pointer" onclick="addPayment('+o.id+')">＋ 录入回款</button></div>';
+            // Payment list with commission
+            if(o.payments.length){
+                html+='<div style="margin-top:8px">';
+                o.payments.forEach(function(p){
+                    var allocCost=o.total>0?o.totalCost*(p.amount/o.total):0;
+                    var netIncome=p.amount-allocCost;
+                    var ch40=Math.round(netIncome*0.4),ch30_1=Math.round(netIncome*0.3),ch30_2=Math.round(netIncome*0.3);
+                    html+='<div style="padding:6px 8px;background:#fff;border-radius:6px;margin-bottom:4px;font-size:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">';
+                    html+='<span>💰 '+fmt(p.amount)+' 元 <span style="color:var(--text-muted)">('+p.date+')</span></span>';
+                    html+='<span style="color:var(--text-muted)">净收入 '+fmt(Math.round(netIncome))+'</span>';
+                    html+='<span style="font-size:11px">策划<b style="color:var(--primary)">'+fmt(ch40)+'</b> 设计<b style="color:var(--warning)">'+fmt(ch30_1)+'</b> 销售<b style="color:var(--success)">'+fmt(ch30_2)+'</b></span>';
+                    html+='<button style="font-size:10px;color:var(--danger);border:none;background:none;cursor:pointer" onclick="deletePayment('+o.id+','+p.id+')">×</button>';
+                    html+='</div>';
+                });
+                // Cumulative commission summary
+                var totalPaid=o.payments.reduce(function(s,p){return s+(p.amount||0)},0);
+                var totalAllocCost=o.total>0?o.totalCost*(totalPaid/o.total):0;
+                var totalNet=totalPaid-totalAllocCost;
+                var tCh40=Math.round(totalNet*0.4),tCh30_1=Math.round(totalNet*0.3),tCh30_2=Math.round(totalNet*0.3);
+                html+='<div class="comm-summary"><div>累计提成汇总（已回款 ¥'+fmt(totalPaid)+'）</div>';
+                html+='<div>累计分摊成本：<strong>¥'+fmt(Math.round(totalAllocCost))+'</strong>　累计净收入：<strong>¥'+fmt(Math.round(totalNet))+'</strong></div>';
+                html+='<div>策划：<strong>'+fmt(tCh40)+'</strong>　设计：<strong>'+fmt(tCh30_1)+'</strong>　销售：<strong>'+fmt(tCh30_2)+'</strong></div></div>';
+                html+='</div>';
+            }
+            html+='</div>';
+        }
+        html+='</div>';
+    });
+    html+='</div>';
+    document.getElementById('qo-summary-body').innerHTML=html;
+}
+
+/* ===== 总览页联动：加入已确认报价的回款 ===== */
+var _origRenderOverview=renderOverview;
+renderOverview=function(){
+    // Get confirmed orders' payments for current month
+    var orders=getQuoteOrders();
+    var extraAdIncome=0,extraAdCost=0;
+    orders.forEach(function(o){
+        if(o.status!=='confirmed')return;
+        // Check if order date falls in current month
+        if(o.date&&o.date.startsWith(mKey())){
+            o.payments.forEach(function(p){
+                var allocCost=o.total>0?o.totalCost*(p.amount/o.total):0;
+                extraAdIncome+=p.amount;
+                extraAdCost+=allocCost;
+            });
+        }
+    });
+    _origRenderOverview();
+    // Update KPI and progress with extra data
+    var k=mKey();
+    var adItems=getIncomeItems('ad');
+    var adIncome=0,adCost=0;
+    adItems.forEach(function(i){adIncome+=i.amount||0;adCost+=i.cost||0});
+    adIncome+=extraAdIncome;adCost+=extraAdCost;
+    var adNet=adIncome-adCost;
+    var target=MONTHLY_TARGETS[k]||{ad:0,shops:0,fee:0,comm:0};
+    var records=data.records.filter(function(r){return r.month===k});
+    var tasks=records.filter(function(r){return !r.isNote});
+    var done=tasks.filter(function(t){return t.status==='已完成'||t.status==='已验收'}).length;
+    var total=tasks.length;
+    document.getElementById('ov-kpi').innerHTML='<div class="kpi"><div class="val">'+target.shops+'</div><div class="label">签约目标</div></div><div class="kpi"><div class="val">'+fmt(adIncome)+'</div><div class="label">广告到账</div></div><div class="kpi"><div class="val">'+done+'/'+total+'</div><div class="label">任务完成</div><span class="badge '+(total>0?(done/total>=0.8?'badge-green':done/total>=0.5?'badge-yellow':'badge-red'):'badge-blue')+'">'+(total>0?Math.round(done/total*100)+'%':'-')+'</span></div><div class="kpi"><div class="val" style="color:'+(adNet>=0?'var(--success)':'var(--danger)')+'">'+fmt(adNet)+'</div><div class="label">广告净收入</div></div>';
+    document.getElementById('ov-progress').innerHTML='<div class="prog-row"><span class="prog-label">任务</span><div class="prog-bar"><div class="prog-fill blue" style="width:'+(total>0?done/total*100:0)+'%"></div></div><span class="prog-val">'+(total>0?Math.round(done/total*100)+'%':'-')+'</span></div><div class="prog-row"><span class="prog-label">广告到账</span><div class="prog-bar"><div class="prog-fill green" style="width:'+pct(adIncome,target.ad)+'%"></div></div><span class="prog-val">'+fmt(adIncome)+'</span></div><div class="prog-row"><span class="prog-label">广告净收入</span><div class="prog-bar"><div class="prog-fill '+(adNet>=0?'green':'red')+'" style="width:'+(adIncome>0?pct(adNet,adIncome):0)+'%"></div></div><span class="prog-val" style="color:'+(adNet>=0?'var(--success)':'var(--danger)')+'">'+fmt(adNet)+'</span></div><div class="prog-row"><span class="prog-label">好物营收</span><div class="prog-bar"><div class="prog-fill orange" style="width:'+pct(getIncomeItems('hw').reduce(function(s,i){return s+(i.amount||0)},0),target.fee+target.comm)+'%"></div></div><span class="prog-val">'+fmt(getIncomeItems('hw').reduce(function(s,i){return s+(i.amount||0)},0))+'</span></div>';
+};
+
 render();
+renderQuoteSummary();
 </script>
 </body>
 </html>
