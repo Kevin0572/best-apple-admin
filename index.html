@@ -62,6 +62,16 @@
         .type-ad{background:#ebf8ff;color:#2b6cb0}
         .type-note{background:#fffff0;color:#975a16}
         .type-other{background:#f7fafc;color:#718096}
+        .income-list{margin-top:10px}
+        .income-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:var(--bg);border-radius:8px;flex-wrap:wrap}
+        .income-item .ii-name{flex:1;min-width:100px;font-size:13px;font-weight:500;color:var(--text);background:none;border:none;outline:none}
+        .income-item .ii-name::placeholder{color:var(--text-muted)}
+        .income-item .ii-amt{width:90px;text-align:right;font-size:14px;font-weight:600;color:var(--success);background:none;border:none;outline:none}
+        .income-item .ii-amt::placeholder{color:var(--text-muted)}
+        .income-item .ii-del{font-size:16px;color:var(--text-muted);cursor:pointer;padding:2px 6px;border:none;background:none;line-height:1}
+        .income-item .ii-del:hover{color:var(--danger)}
+        .income-total{text-align:right;padding:6px 10px;font-size:13px;color:var(--text-secondary);border-top:1px dashed var(--border);margin-top:4px}
+        .income-total strong{font-size:15px;color:var(--success)}
         .prog-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
         .prog-label{width:80px;font-size:13px;color:var(--text-secondary);flex-shrink:0}
         .prog-bar{flex:1;height:8px;background:#edf2f7;border-radius:8px;overflow:hidden}
@@ -150,6 +160,8 @@
     <div class="section active" id="sec-overview">
         <div class="month-nav"><button onclick="changeMonth(-1)">◀</button><span class="ml" id="ov-month"></span><button onclick="changeMonth(1)">▶</button></div>
         <div class="kpi-row" id="ov-kpi"></div>
+        <div class="card"><div class="card-title">💰 广告到账明细<span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px" id="ad-sum-label"></span><div class="actions"><button onclick="addIncomeItem('ad')">＋添加项目</button></div></div><div id="ov-ad-items"></div></div>
+        <div class="card"><div class="card-title">🏠 好物营收明细<span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:8px" id="hw-sum-label"></span><div class="actions"><button onclick="addIncomeItem('hw')">＋添加项目</button></div></div><div id="ov-hw-items"></div></div>
         <div class="card"><div class="card-title">目标进度</div><div id="ov-progress"></div></div>
         <div class="card"><div class="card-title">各岗位完成情况</div><div id="ov-byrole"></div></div>
     </div>
@@ -464,9 +476,14 @@ function renderOverview(){
     const done=tasks.filter(t=>t.status==='已完成'||t.status==='已验收').length;
     const total=tasks.length;
     let adIncome=0,adCost=0,hwIncome=0;
-    notes.forEach(n=>{const a=n.amount||0;if(n.type==='广告-收入')adIncome+=a;if(n.type==='广告-成本')adCost+=Math.abs(a);if(n.type==='好物-收入')hwIncome+=a});
+    // Priority: incomeItems > notes > salary override
+    const adItems=getIncomeItems('ad');
+    const hwItems=getIncomeItems('hw');
+    if(adItems.length){adItems.forEach(i=>{adIncome+=i.amount||0})}else{notes.forEach(n=>{const a=n.amount||0;if(n.type==='广告-收入')adIncome+=a;if(n.type==='广告-成本')adCost+=Math.abs(a);if(n.type==='好物-收入')hwIncome+=a})}
+    if(hwItems.length){hwIncome=0;hwItems.forEach(i=>{hwIncome+=i.amount||0})}
+    notes.forEach(n=>{if(n.type==='广告-成本')adCost+=Math.abs(n.amount||0)});
     const s=data.salary[k]||{};
-    if(s.ad!==undefined)adIncome=s.ad;if(s.adCost!==undefined)adCost=s.adCost;
+    if(s.adCost!==undefined)adCost=s.adCost;
     const adNet=adIncome-adCost;
     document.getElementById('ov-kpi').innerHTML=`
         <div class="kpi"><div class="val">${target.shops}</div><div class="label">签约目标</div></div>
@@ -479,7 +496,97 @@ function renderOverview(){
         <div class="prog-row"><span class="prog-label">广告净收入</span><div class="prog-bar"><div class="prog-fill ${adNet>=0?'green':'red'}" style="width:${adIncome>0?pct(adNet,adIncome):0}%"></div></div><span class="prog-val" style="color:${adNet>=0?'var(--success)':'var(--danger)'}">${fmt(adNet)}</span></div>
         <div class="prog-row"><span class="prog-label">好物营收</span><div class="prog-bar"><div class="prog-fill orange" style="width:${pct(hwIncome,target.fee+target.comm)}%"></div></div><span class="prog-val">${fmt(hwIncome)}</span></div>`;
     document.getElementById('ov-byrole').innerHTML=ROLES.map(r=>{const rt=tasks.filter(t=>t.role===r);const rd=rt.filter(t=>t.status==='已完成'||t.status==='已验收').length;return`<div class="prog-row"><span class="prog-label">${r}</span><div class="prog-bar"><div class="prog-fill ${r==='销售'?'green':r==='策划'?'blue':'orange'}" style="width:${rt.length>0?rd/rt.length*100:0}%"></div></div><span class="prog-val">${rd}/${rt.length}</span></div>`}).join('');
+    renderIncomeItems();
 }
+
+/* ---- 收入明细（总览页按项目录入） ---- */
+function getIncomeItems(type){
+    const k=mKey();
+    if(!data.incomeItems)data.incomeItems={};
+    if(!data.incomeItems[k])data.incomeItems[k]={ad:[],hw:[]};
+    return data.incomeItems[k][type]||[];
+}
+function saveIncomeItems(){
+    saveData(data);
+}
+function addIncomeItem(type){
+    const items=getIncomeItems(type);
+    items.push({name:'',amount:0});
+    saveIncomeItems();
+    renderIncomeItems();
+    // Focus the new name input
+    setTimeout(()=>{
+        const container=document.getElementById(type==='ad'?'ov-ad-items':'ov-hw-items');
+        const inputs=container.querySelectorAll('.ii-name');
+        if(inputs.length)inputs[inputs.length-1].focus();
+    },50);
+}
+function delIncomeItem(type,idx){
+    const items=getIncomeItems(type);
+    items.splice(idx,1);
+    saveIncomeItems();
+    renderIncomeItems();
+}
+function onIncomeNameChange(type,idx,val){
+    getIncomeItems(type)[idx].name=val;
+    saveIncomeItems();
+    syncIncomeToOverview();
+}
+function onIncomeAmtChange(type,idx,val){
+    getIncomeItems(type)[idx].amount=parseFloat(val)||0;
+    saveIncomeItems();
+    renderIncomeItems();
+    syncIncomeToOverview();
+}
+function syncIncomeToOverview(){
+    // Re-calc from income items and update KPI + progress
+    const k=mKey();
+    const adItems=getIncomeItems('ad');
+    const hwItems=getIncomeItems('hw');
+    let adIncome=0;adItems.forEach(i=>{adIncome+=i.amount||0});
+    let hwIncome=0;hwItems.forEach(i=>{hwIncome+=i.amount||0});
+    const target=MONTHLY_TARGETS[k]||{ad:0,shops:0,fee:0,comm:0};
+    const s=data.salary[k]||{};
+    let adCost=0;
+    const records=data.records.filter(r=>r.month===k);
+    const notes=records.filter(r=>r.isNote);
+    notes.forEach(n=>{if(n.type==='广告-成本')adCost+=Math.abs(n.amount||0)});
+    if(s.adCost!==undefined)adCost=s.adCost;
+    const adNet=adIncome-adCost;
+    const tasks=records.filter(r=>!r.isNote);
+    const done=tasks.filter(t=>t.status==='已完成'||t.status==='已验收').length;
+    const total=tasks.length;
+    document.getElementById('ov-kpi').innerHTML=`
+        <div class="kpi"><div class="val">${target.shops}</div><div class="label">签约目标</div></div>
+        <div class="kpi"><div class="val">${fmt(adIncome)}</div><div class="label">广告到账</div></div>
+        <div class="kpi"><div class="val">${done}/${total}</div><div class="label">任务完成</div><span class="badge ${total>0?(done/total>=0.8?'badge-green':done/total>=0.5?'badge-yellow':'badge-red'):'badge-blue'}">${total>0?Math.round(done/total*100)+'%':'-'}</span></div>
+        <div class="kpi"><div class="val" style="color:${adNet>=0?'var(--success)':'var(--danger)'}">${fmt(adNet)}</div><div class="label">广告净收入</div></div>`;
+    document.getElementById('ov-progress').innerHTML=`
+        <div class="prog-row"><span class="prog-label">任务</span><div class="prog-bar"><div class="prog-fill blue" style="width:${total>0?done/total*100:0}%"></div></div><span class="prog-val">${total>0?Math.round(done/total*100)+'%':'-'}</span></div>
+        <div class="prog-row"><span class="prog-label">广告到账</span><div class="prog-bar"><div class="prog-fill green" style="width:${pct(adIncome,target.ad)}%"></div></div><span class="prog-val">${fmt(adIncome)}</span></div>
+        <div class="prog-row"><span class="prog-label">广告净收入</span><div class="prog-bar"><div class="prog-fill ${adNet>=0?'green':'red'}" style="width:${adIncome>0?pct(adNet,adIncome):0}%"></div></div><span class="prog-val" style="color:${adNet>=0?'var(--success)':'var(--danger)'}">${fmt(adNet)}</span></div>
+        <div class="prog-row"><span class="prog-label">好物营收</span><div class="prog-bar"><div class="prog-fill orange" style="width:${pct(hwIncome,target.fee+target.comm)}%"></div></div><span class="prog-val">${fmt(hwIncome)}</span></div>`;
+}
+function renderIncomeItems(){
+    ['ad','hw'].forEach(type=>{
+        const items=getIncomeItems(type);
+        const container=document.getElementById(type==='ad'?'ov-ad-items':'ov-hw-items');
+        const label=document.getElementById(type==='ad'?'ad-sum-label':'hw-sum-label');
+        let total=0;items.forEach(i=>{total+=i.amount||0});
+        label.textContent='合计 ¥'+fmt(total);
+        if(!items.length){
+            container.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:16px;font-size:13px">暂无记录，点击上方添加</div>';
+            return;
+        }
+        let h='<div class="income-list">';
+        items.forEach((item,i)=>{
+            h+=`<div class="income-item"><input class="ii-name" placeholder="项目名称（如：XX宠物店-招牌）" value="${escHtml(item.name)}" onchange="onIncomeNameChange('${type}',${i},this.value)"><input class="ii-amt" type="number" placeholder="金额" value="${item.amount||''}" oninput="onIncomeAmtChange('${type}',${i},this.value)"><span style="color:var(--text-muted);font-size:12px">元</span><button class="ii-del" onclick="delIncomeItem('${type}',${i})">×</button></div>`;
+        });
+        h+=`</div><div class="income-total">本月合计：<strong>¥ ${fmt(total)}</strong></div>`;
+        container.innerHTML=h;
+    });
+}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 function renderTasks(){
     const k=mKey();document.getElementById('tk-month').textContent=mLabel();
