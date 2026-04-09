@@ -132,7 +132,8 @@
         <button class="tab active" onclick="switchTab('overview')">📈 总览</button>
         <button class="tab" onclick="switchTab('tasks')">📋 任务</button>
         <button class="tab" onclick="switchTab('salary')">💰 薪资</button>
-        <button class="tab" onclick="switchTab('quote')">📖 报价</button>
+        <button class="tab" onclick="switchTab('adquote')">📄 广告报价</button>
+        <button class="tab" onclick="switchTab('designquote')">🎨 设计报价</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -199,19 +200,44 @@
         <div class="salary-grid" id="sl-result"></div>
     </div>
 
-    <!-- QUOTE -->
-    <div class="section" id="sec-quote">
+    <!-- AD QUOTE -->
+    <div class="section" id="sec-adquote">
         <div class="card">
-            <div class="card-title">设计类报价参考表（2026版）
-                <div class="actions">
-                    <button onclick="exportQuote()">📥 导出报价表</button>
-                </div>
+            <div class="card-title">📄 广告报价单（客户版）</div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">客户名称</label><input class="form-input" id="aq-client" placeholder="例：某某宠物店"></div>
+                <div class="form-group"><label class="form-label">报价日期</label><input class="form-input" type="date" id="aq-date"></div>
+                <div class="form-group"><label class="form-label">有效期（天）</label><input class="form-input" type="number" id="aq-valid" value="30"></div>
             </div>
-            <div id="quote-table"></div>
+            <div style="margin-top:14px">
+                <div class="card-title" style="border:none;padding:0;margin:0">报价明细
+                    <div class="actions"><button onclick="addQuoteItem()">+ 添加项目</button></div>
+                </div>
+                <div id="aq-items"></div>
+            </div>
+            <div id="aq-summary" style="margin-top:14px"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">内部成本核算</div>
+            <div id="aq-cost-section"></div>
+        </div>
+        <div style="text-align:center;margin:14px 0">
+            <button class="primary-btn" style="padding:12px 40px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;font-weight:600;cursor:pointer" onclick="exportQuotePDF()">📥 导出 PDF 报价单</button>
+        </div>
+    </div>
+
+    <!-- DESIGN QUOTE -->
+    <div class="section" id="sec-designquote">
+        <div class="card">
+            <div class="card-title">🎨 设计报价参考表（2026版·湖州）
+                <div class="actions"><button onclick="exportDesignCSV()">📥 导出报价表</button></div>
+            </div>
+            <div id="dq-table"></div>
         </div>
         <div class="card" style="font-size:12px;color:var(--text-muted);line-height:1.8">
             <strong style="color:var(--text-secondary)">备注：</strong><br>
-            · 以上为设计费，不含印刷制作成本<br>
+            · 以上为设计费，不含工厂物料成本<br>
+            · 物料成本价待工厂报价后补充<br>
             · 复杂项目（如3D建模、手绘插画）价格另议<br>
             · 加急项目加收30%-50%<br>
             · 修改次数：一般项目3次内免费，超出每次加收100-200<br>
@@ -269,47 +295,51 @@ const DEFAULT_BENEFITS={'销售':{attend:200,meal:300,transport:200,phone:100,ot
 const MONTHLY_TARGETS={'2026-4':{ad:25000,shops:5,fee:0,comm:0},'2026-5':{ad:30000,shops:12,fee:2400,comm:100},'2026-6':{ad:35000,shops:16,fee:5280,comm:200},'2026-7':{ad:40000,shops:20,fee:7680,comm:300},'2026-8':{ad:50000,shops:20,fee:9600,comm:400},'2026-9':{ad:60000,shops:20,fee:9600,comm:500},'2026-10':{ad:50000,shops:22,fee:9600,comm:600},'2026-11':{ad:45000,shops:25,fee:10560,comm:700},'2026-12':{ad:55000,shops:25,fee:10560,comm:800}};
 const QUOTE_DATA=[
   {cat:'品牌设计',items:[
-    {name:'Logo设计',price:'800-3,000',note:'简洁版800起，含VI规范3,000起'},
-    {name:'VI视觉识别系统',price:'3,000-8,000',note:'基础版3个应用面，完整版10个以上'},
-    {name:'品牌手册/画册设计',price:'2,000-5,000',note:'A4内页8-16P，含封面封底'},
-    {name:'企业宣传册',price:'1,500-4,000',note:'8-12P单折页或骑马钉'},
-    {name:'包装设计',price:'500-3,000',note:'单品包装500起，系列包装面议'},
-    {name:'名片设计',price:'100-300',note:'含正反面，出3稿选1'},
+    {name:'Logo设计',price:'800-3,000',materialCost:'—',laborCost:'________',note:'简洁版800起，含VI规范3,000起'},
+    {name:'VI视觉识别系统',price:'3,000-8,000',materialCost:'—',laborCost:'________',note:'基础版3个应用面，完整版10个以上'},
+    {name:'品牌手册/画册设计',price:'2,000-5,000',materialCost:'印刷另算',laborCost:'________',note:'A4内页8-16P，含封面封底'},
+    {name:'企业宣传册',price:'1,500-4,000',materialCost:'印刷另算',laborCost:'________',note:'8-12P单折页或骑马钉'},
+    {name:'包装设计',price:'500-3,000',materialCost:'制作另算',laborCost:'________',note:'单品包装500起，系列包装面议'},
+    {name:'名片设计',price:'100-300',materialCost:'印刷另算',laborCost:'________',note:'含正反面，出3稿选1'},
   ]},
-  {cat:'广告物料',items:[
-    {name:'传单/单页',price:'200-500',note:'A4/A5单面，含设计+排版'},
-    {name:'海报设计',price:'300-800',note:'A3/A2，含出血位'},
-    {name:'易拉宝/X展架',price:'200-400',note:'80×200cm标准尺寸'},
-    {name:'横幅/条幅',price:'100-200',note:'按米计费，含排版'},
-    {name:'吊旗/三角旗',price:'150-300',note:'一套含3-5个尺寸'},
-    {name:'道旗/刀旗',price:'200-400',note:'含排版设计，不含制作'},
-    {name:'桌牌/台卡',price:'100-200',note:'A4或自定义尺寸'},
-    {name:'地贴/墙贴',price:'150-300',note:'按面积计费'},
-    {name:'展板/展架',price:'300-600',note:'标准展板或异形展架'},
+  {cat:'广告物料制作',items:[
+    {name:'普通条幅',price:'80-150',materialCost:'3元/米',laborCost:'________',note:'纯色条幅，工厂直出'},
+    {name:'彩色条幅',price:'120-250',materialCost:'4-6元/米 + 穿杆6元/条',laborCost:'________',note:'彩色印刷条幅，穿杆加6元'},
+    {name:'旗帜/吊旗（双透旗）',price:'8-15',materialCost:'2元/块（小旗）15元/块（队旗）40元/套（含旗杆）',laborCost:'________',note:'尺寸不同价格不同'},
+    {name:'道旗/刀旗',price:'30-80',materialCost:'30-80元/面（双喷夹黑布）',laborCost:'________',note:'按材质和尺寸区分'},
+    {name:'磁吸画/磁吸照片',price:'50-150',materialCost:'5-10元/块（小尺寸）100元/㎡（大尺寸）',laborCost:'________',note:'22×27cm小尺寸 5-10元，大面积100元/㎡'},
+    {name:'亚克力字/水晶字',price:'100-500',materialCost:'0.8-1元/公分（水晶字）300元/㎡（10mm亚克力）400元/㎡（UV水晶字）',laborCost:'________',note:'按公分或按平方米计费'},
+    {name:'亚克力牌/PVC板',price:'200-1,500',materialCost:'50元/㎡（5mm PVC）200-250元/㎡（PVC+白板+磁吸）',laborCost:'________',note:'制度牌、科室牌等'},
+    {name:'木托牌/沙银托牌',price:'150-300',materialCost:'70元/块',laborCost:'________',note:'含底座'},
+    {name:'铜牌',price:'150-300',materialCost:'60元/块',laborCost:'________',note:'加急费另算'},
+    {name:'锦旗',price:'120-200',materialCost:'60元/套（60×90cm）',laborCost:'________',note:'含金边'},
+    {name:'PVC证卡/ABS证卡',price:'80-200',materialCost:'2-3元/块',laborCost:'________',note:'批量制作'},
+    {name:'车贴/窗贴',price:'50-150',materialCost:'1元起',laborCost:'________',note:'按面积计费'},
+    {name:'横幅布门帘',price:'80-150',materialCost:'10元/㎡',laborCost:'________',note:'按面积计费'},
   ]},
   {cat:'线上设计',items:[
-    {name:'公众号封面图',price:'100-200',note:'首条/次条封面+次条'},
-    {name:'公众号长图文排版',price:'200-500',note:'含配图排版，不含文案'},
-    {name:'朋友圈海报',price:'150-300',note:'含文案排版设计'},
-    {name:'小红书图文',price:'200-400',note:'含6-9图排版'},
-    {name:'H5页面设计',price:'500-2,000',note:'3-5页基础版，复杂交互面议'},
-    {name:'短视频封面/片头',price:'200-500',note:'抖音/视频号封面'},
-    {name:'电商主图/详情页',price:'300-800',note:'淘宝/拼多多5张主图+详情页'},
+    {name:'公众号封面图',price:'100-200',materialCost:'—',laborCost:'________',note:'首条/次条封面+次条'},
+    {name:'公众号长图文排版',price:'200-500',materialCost:'—',laborCost:'________',note:'含配图排版，不含文案'},
+    {name:'朋友圈海报',price:'150-300',materialCost:'—',laborCost:'________',note:'含文案排版设计'},
+    {name:'小红书图文',price:'200-400',materialCost:'—',laborCost:'________',note:'含6-9图排版'},
+    {name:'H5页面设计',price:'500-2,000',materialCost:'—',laborCost:'________',note:'3-5页基础版，复杂交互面议'},
+    {name:'短视频封面/片头',price:'200-500',materialCost:'—',laborCost:'________',note:'抖音/视频号封面'},
+    {name:'电商主图/详情页',price:'300-800',materialCost:'—',laborCost:'________',note:'淘宝/拼多多5张主图+详情页'},
   ]},
   {cat:'活动物料',items:[
-    {name:'活动主视觉KV',price:'500-1,500',note:'含1张主图+应用延展'},
-    {name:'活动海报系列',price:'800-2,000',note:'3-5张系列海报'},
-    {name:'签到背景板',price:'300-600',note:'含设计+出血位'},
-    {name:'舞台背景板',price:'500-1,000',note:'按尺寸计费'},
-    {name:'证书/奖状设计',price:'100-200',note:'含模板'},
-    {name:'邀请函设计',price:'150-300',note:'电子版/纸质版'},
+    {name:'活动主视觉KV',price:'500-1,500',materialCost:'制作另算',laborCost:'________',note:'含1张主图+应用延展'},
+    {name:'活动海报系列',price:'800-2,000',materialCost:'印刷另算',laborCost:'________',note:'3-5张系列海报'},
+    {name:'签到背景板',price:'300-600',materialCost:'制作另算',laborCost:'________',note:'含设计+出血位'},
+    {name:'舞台背景板',price:'500-1,000',materialCost:'制作另算',laborCost:'________',note:'按尺寸计费'},
+    {name:'证书/奖状设计',price:'100-200',materialCost:'制作另算',laborCost:'________',note:'含模板'},
+    {name:'邀请函设计',price:'150-300',materialCost:'制作另算',laborCost:'________',note:'电子版/纸质版'},
   ]},
   {cat:'空间/环境',items:[
-    {name:'门头/店招设计',price:'500-1,500',note:'含效果图'},
-    {name:'室内导视系统',price:'1,000-3,000',note:'按点位计费'},
-    {name:'文化墙设计',price:'800-2,000',note:'含效果图'},
-    {name:'门店空间视觉',price:'2,000-5,000',note:'含3D效果图'},
-    {name:'展厅/展台设计',price:'2,000-8,000',note:'按面积计费'},
+    {name:'门头/店招设计',price:'500-1,500',materialCost:'制作另算',laborCost:'________',note:'含效果图'},
+    {name:'室内导视系统',price:'1,000-3,000',materialCost:'按材质另算',laborCost:'________',note:'按点位计费'},
+    {name:'文化墙设计',price:'800-2,000',materialCost:'按材质另算',laborCost:'________',note:'含效果图'},
+    {name:'门店空间视觉',price:'2,000-5,000',materialCost:'按材质另算',laborCost:'________',note:'含3D效果图'},
+    {name:'展厅/展台设计',price:'2,000-8,000',materialCost:'按材质另算',laborCost:'________',note:'按面积计费'},
   ]},
 ];
 
@@ -333,7 +363,7 @@ function fmt(n){return n.toLocaleString('zh-CN')}
 function pct(a,b){return b>0?Math.min(Math.round(a/b*100),150):0}
 function getTier(t,v){for(let i=0;i<t.length;i++)if(v<t[i].max)return t[i].r;return t[t.length-1].r}
 
-function switchTab(tab){document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['overview','tasks','salary','quote'][i]===tab));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+tab).classList.add('active');render()}
+function switchTab(tab){var tabs=['overview','tasks','salary','adquote','designquote'];document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('active',tabs[i]===tab)});document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active')});document.getElementById('sec-'+tab).classList.add('active');render()}
 function changeMonth(d){curMonth.setMonth(curMonth.getMonth()+d);render()}
 function filterRole(f,el){curRole=f;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));el.classList.add('active');render()}
 function filterType(f,el){curTypeFilter=f;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));el.classList.add('active');render()}
@@ -496,28 +526,113 @@ function exportCSV(){
     link.href=URL.createObjectURL(blob);link.download=`博思堂_${mLabel()}_对账单.csv`;link.click();
 }
 
-function render(){renderOverview();renderTasks();renderSalary();renderQuote()}
+var quoteItems=JSON.parse(localStorage.getItem('bst_quote_items')||'[]');
 
-function renderQuote(){
-    var cc={'品牌设计':'var(--primary)','广告物料':'var(--success)','线上设计':'var(--warning)','活动物料':'#e53e3e','空间/环境':'#805ad5'};
+const AD_QUOTE_TEMPLATES=[
+    {name:'传单/单页设计',unit:'张',price:300,cost:0,costNote:''},
+    {name:'海报设计',unit:'张',price:500,cost:0,costNote:''},
+    {name:'易拉宝设计+制作',unit:'个',price:350,cost:0,costNote:''},
+    {name:'横幅设计+制作',unit:'米',price:150,cost:0,costNote:''},
+    {name:'活动主视觉KV',unit:'套',price:1000,cost:0,costNote:''},
+    {name:'签到背景板',unit:'块',price:400,cost:0,costNote:''},
+    {name:'展板设计',unit:'块',price:400,cost:0,costNote:''},
+    {name:'门头/店招设计',unit:'套',price:1000,cost:0,costNote:''},
+    {name:'文化墙设计',unit:'面',price:1500,cost:0,costNote:''},
+    {name:'公众号长图文',unit:'篇',price:350,cost:0,costNote:''},
+    {name:'朋友圈海报',unit:'张',price:200,cost:0,costNote:''},
+    {name:'品牌画册设计',unit:'册',price:3500,cost:0,costNote:''},
+];
+
+function render(){renderOverview();renderTasks();renderSalary();renderAdQuote();renderDesignQuote()}
+
+function renderAdQuote(){
+    document.getElementById('aq-date').value=new Date().toISOString().slice(0,10);
+    if(!quoteItems.length){quoteItems=[{name:'',unit:'项',price:0,qty:1,cost:0,costNote:'',labor:''}];}
+    var h='<table class="data-table"><thead><tr><th>项目名称</th><th>单位</th><th>单价</th><th>数量</th><th>小计</th><th>操作</th></tr></thead><tbody>';
+    var total=0;
+    quoteItems.forEach(function(item,i){
+        var sub=item.price*item.qty;
+        total+=sub;
+        h+='<tr><td><input class="form-input" style="min-width:120px" value="'+item.name+'" placeholder="选择或输入" oninput="updateQuoteItem('+i+',\'name\',this.value)"></td>';
+        h+='<td><input class="form-input" style="width:60px" value="'+item.unit+'" oninput="updateQuoteItem('+i+',\'unit\',this.value)"></td>';
+        h+='<td><input class="form-input" style="width:80px" type="number" value="'+item.price+'" oninput="updateQuoteItem('+i+',\'price\',this.value)"></td>';
+        h+='<td><input class="form-input" style="width:60px" type="number" value="'+item.qty+'" oninput="updateQuoteItem('+i+',\'qty\',this.value)"></td>';
+        h+='<td class="num" style="color:var(--warning)">'+fmt(sub)+'</td>';
+        h+='<td><button style="font-size:11px;color:var(--danger);border:none;background:none;cursor:pointer" onclick="removeQuoteItem('+i+')">删除</button></td></tr>';
+    });
+    h+='</tbody></table>';
+    document.getElementById('aq-items').innerHTML=h;
+
+    document.getElementById('aq-summary').innerHTML='<div style="background:var(--primary-light);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:600;color:var(--primary)">报价总计</span><span style="font-size:22px;font-weight:700;color:var(--primary)">¥ '+fmt(total)+'</span></div>';
+
+    // Cost section
+    var costH='<table class="data-table"><thead><tr><th>项目</th><th>成本价</th><th>人工费</th><th>成本小计</th><th>报价</th><th>毛利</th><th>利润率</th><th>成本备注</th></tr></thead><tbody>';
+    var totalCost=0,totalLabor=0;
+    quoteItems.forEach(function(item,i){
+        var sub=item.price*item.qty;
+        var costSub=item.cost*item.qty;
+        var labor=item.labor?parseFloat(item.labor)*item.qty:0;
+        var allCost=costSub+labor;
+        totalCost+=costSub;totalLabor+=labor;
+        var profit=sub-allCost;
+        var rate=sub>0?Math.round(profit/sub*100):0;
+        costH+='<tr><td>'+item.name+'</td>';
+        costH+='<td><input class="form-input" style="width:80px" type="number" value="'+item.cost+'" oninput="updateQuoteItem('+i+',\'cost\',this.value)" placeholder="物料成本"></td>';
+        costH+='<td><input class="form-input" style="width:80px" type="number" value="'+(item.labor||'')+'" oninput="updateQuoteItem('+i+',\'labor\',this.value)" placeholder="人工费"></td>';
+        costH+='<td class="num" style="color:var(--danger)">'+fmt(Math.round(allCost))+'</td>';
+        costH+='<td class="num">'+fmt(sub)+'</td>';
+        costH+='<td class="num" style="color:'+(profit>=0?'var(--success)':'var(--danger)')+'">'+fmt(Math.round(profit))+'</td>';
+        costH+='<td class="num" style="color:'+(rate>=30?'var(--success)':rate>=10?'var(--warning)':'var(--danger)')+'">'+rate+'%</td>';
+        costH+='<td><input class="form-input" style="min-width:100px" value="'+(item.costNote||'')+'" oninput="updateQuoteItem('+i+',\'costNote\',this.value)" placeholder="成本说明"></td></tr>';
+    });
+    costH+='</tbody></table>';
+    var totalRevenue=total,totalAllCost=totalCost+totalLabor,totalProfit=totalRevenue-totalAllCost,totalRate=totalRevenue>0?Math.round(totalProfit/totalRevenue*100):0;
+    costH+='<div style="margin-top:12px;background:#f7fafc;border-radius:10px;padding:12px;font-size:13px;line-height:2">';
+    costH+='<div>总物料成本：<span style="color:var(--danger);font-weight:600">'+fmt(Math.round(totalCost))+' 元</span>　|　总人工费：<span style="color:var(--warning);font-weight:600">'+fmt(Math.round(totalLabor))+' 元</span>　|　总成本：<span style="color:var(--danger);font-weight:700">'+fmt(Math.round(totalAllCost))+' 元</span></div>';
+    costH+='<div>总报价：<span style="font-weight:700">'+fmt(totalRevenue)+' 元</span>　|　总毛利：<span style="color:'+(totalProfit>=0?'var(--success)':'var(--danger)')+';font-weight:700">'+fmt(Math.round(totalProfit))+' 元</span>　|　综合利润率：<span style="font-weight:700">'+totalRate+'%</span></div>';
+    costH+='</div>';
+    document.getElementById('aq-cost-section').innerHTML=costH;
+}
+
+function addQuoteItem(){quoteItems.push({name:'',unit:'项',price:0,qty:1,cost:0,costNote:'',labor:''});saveQuoteItems();renderAdQuote()}
+function removeQuoteItem(i){quoteItems.splice(i,1);saveQuoteItems();renderAdQuote()}
+function updateQuoteItem(i,key,val){if(key==='price'||key==='qty'||key==='cost')quoteItems[i][key]=parseFloat(val)||0;else quoteItems[i][key]=val;saveQuoteItems();renderAdQuote()}
+function saveQuoteItems(){localStorage.setItem('bst_quote_items',JSON.stringify(quoteItems))}
+
+function exportQuotePDF(){
+    var client=document.getElementById('aq-client').value||'客户';
+    var date=document.getElementById('aq-date').value;
+    var valid=document.getElementById('aq-valid').value||'30';
+    var total=0;quoteItems.forEach(function(it){total+=it.price*it.qty});
+    var itemsHtml='';quoteItems.forEach(function(it){var sub=it.price*it.qty;itemsHtml+='<tr><td style="border:1px solid #ddd;padding:8px">'+it.name+'</td><td style="border:1px solid #ddd;padding:8px">'+it.unit+'</td><td style="border:1px solid #ddd;padding:8px">¥'+it.price+'</td><td style="border:1px solid #ddd;padding:8px">'+it.qty+'</td><td style="border:1px solid #ddd;padding:8px">¥'+fmt(sub)+'</td></tr>'});
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>报价单</title><style>body{font-family:sans-serif;max-width:700px;margin:40px auto;color:#333}h1{font-size:22px;border-bottom:2px solid #2b6cb0;padding-bottom:10px;color:#2b6cb0}.info{display:flex;justify-content:space-between;margin:20px 0;font-size:14px;color:#666}table{width:100%;border-collapse:collapse;margin:20px 0}th{background:#2b6cb0;color:#fff;padding:10px;text-align:left}td{padding:8px}.total{text-align:right;font-size:18px;font-weight:700;margin:20px 0;padding:15px;background:#f0f2f5;border-radius:8px}.notes{font-size:12px;color:#999;line-height:1.8;border-top:1px solid #eee;padding-top:15px}.sign{display:flex;justify-content:space-between;margin-top:60px;font-size:13px}.sign span{border-top:1px solid #333;padding-top:8px;width:120px;text-align:center}</style></head><body><h1>湖州博思堂文化传播有限公司</h1><div style="font-size:16px;margin:4px 0">报价单</div><div class="info"><div><div>客户：'+client+'</div><div>日期：'+date+'</div></div><div><div>报价有效期：'+valid+' 天</div><div>联系人：________________</div></div></div><table><thead><tr><th>项目名称</th><th>单位</th><th>单价</th><th>数量</th><th>小计</th></tr></thead><tbody>'+itemsHtml+'</tbody></table><div class="total">合计：¥ '+fmt(total)+'</div><div class="notes"><p>备注说明：</p><p>1. 以上报价不含税，如需开票另加税点</p><p>2. 设计稿确认后开始制作，制作过程中修改需另行收费</p><p>3. 付款方式：预付50%，验收后付尾款50%</p><p>4. 本报价单有效期 '+valid+' 天</p></div><div class="sign"><span>客户签字</span><span>博思堂签章</span></div></body></html>';
+    var w=window.open('','_blank');
+    w.document.write(html);w.document.close();
+    setTimeout(function(){w.print()},500);
+}
+
+function renderDesignQuote(){
+    var cc={'品牌设计':'var(--primary)','广告物料制作':'var(--success)','线上设计':'var(--warning)','活动物料':'#e53e3e','空间/环境':'#805ad5'};
     var h='';
     QUOTE_DATA.forEach(function(cat){
         h+='<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:'+cc[cat.cat]+';margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid '+cc[cat.cat]+'">'+cat.cat+'</div>';
-        h+='<table class="data-table"><thead><tr><th style="width:40%">项目</th><th style="width:25%">参考价格（元）</th><th>说明</th></tr></thead><tbody>';
+        h+='<table class="data-table"><thead><tr><th style="width:22%">项目</th><th style="width:16%">报价（元）</th><th style="width:25%">物料成本</th><th style="width:14%">人工费（元）</th><th>说明</th></tr></thead><tbody>';
         cat.items.forEach(function(item){
-            h+='<tr><td style="font-weight:500">'+item.name+'</td><td class="num" style="color:var(--warning)">'+item.price+'</td><td style="color:var(--text-muted);font-size:12px">'+item.note+'</td></tr>';
+            h+='<tr><td style="font-weight:500">'+item.name+'</td><td class="num" style="color:var(--warning)">'+item.price+'</td><td style="color:var(--text-muted);font-size:11px">'+item.materialCost+'</td><td style="color:var(--primary);font-weight:500;font-size:12px">'+item.laborCost+'</td><td style="color:var(--text-muted);font-size:11px">'+item.note+'</td></tr>';
         });
         h+='</tbody></table></div>';
     });
-    document.getElementById('quote-table').innerHTML=h;
+    document.getElementById('dq-table').innerHTML=h;
 }
 
-function exportQuote(){
-    var BOM='\uFEFF',csv=BOM+'类别,项目,参考价格（元）,说明\n';
-    QUOTE_DATA.forEach(function(cat){cat.items.forEach(function(item){csv+=cat.cat+','+item.name+','+item.price+','+item.note+'\n'})});
+function exportDesignCSV(){
+    var BOM='\uFEFF',csv=BOM+'类别,项目,参考价格（元）,物料成本（元）,人工费（元）,说明\n';
+    QUOTE_DATA.forEach(function(cat){cat.items.forEach(function(item){csv+=cat.cat+','+item.name+','+item.price+','+(item.materialCost||'待补充')+','+(item.laborCost||'')+','+item.note+'\n'})});
     var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});var link=document.createElement('a');
     link.href=URL.createObjectURL(blob);link.download='博思堂设计报价参考表.csv';link.click();
 }
+
+function exportQuote(){exportDesignCSV()}
 
 document.getElementById('today-date').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
 render();
