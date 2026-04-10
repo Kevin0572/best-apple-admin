@@ -268,6 +268,14 @@
                 <div class="form-group"><label class="form-label">报价日期</label><input class="form-input" type="date" id="aq-date"></div>
                 <div class="form-group"><label class="form-label">有效期（天）</label><input class="form-input" type="number" id="aq-valid" value="30"></div>
             </div>
+            <div style="margin-top:14px;background:#fffbf0;border:1px dashed #e2a028;border-radius:10px;padding:14px">
+                <div style="font-size:12px;font-weight:600;color:#b7791f;margin-bottom:10px">🔒 内部成本参数（仅内部核算使用，不导出报价单）</div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">整单税率（%）</label><input class="form-input" type="number" id="aq-tax-rate" value="" placeholder="如 6、9、13" oninput="onInternalParamChange()"></div>
+                    <div class="form-group"><label class="form-label">设计费（元）</label><input class="form-input" type="number" id="aq-design-fee" value="" placeholder="总设计费" oninput="onInternalParamChange()"></div>
+                    <div class="form-group"><label class="form-label">设计师提成比例（%）</label><input class="form-input" type="number" id="aq-design-commission" value="" placeholder="如 30" oninput="onInternalParamChange()"></div>
+                </div>
+            </div>
             <div style="margin-top:14px">
                 <div class="card-title" style="border:none;padding:0;margin:0">报价明细
                     <div class="actions"><button onclick="addQuoteItem()">+ 添加项目</button></div>
@@ -792,15 +800,27 @@ function renderAdQuote(){
         costH+='<td><input class="form-input" style="min-width:100px" value="'+(item.costNote||'')+'" onchange="updateQuoteItem('+i+',\'costNote\',this.value)" placeholder="成本说明"></td></tr>';
     });
     costH+='</tbody></table>';
-    var totalRevenue=total,totalAllCost=totalCost+totalLabor,totalProfit=totalRevenue-totalAllCost,totalRate=totalRevenue>0?Math.round(totalProfit/totalRevenue*100):0;
+    // Internal params: tax rate & design fee
+    var taxRate=parseFloat(document.getElementById('aq-tax-rate').value)||0;
+    var designFee=parseFloat(document.getElementById('aq-design-fee').value)||0;
+    var designCommRate=parseFloat(document.getElementById('aq-design-commission').value)||0;
+    var taxAmount=total*taxRate/100;
+    var designComm=designFee*designCommRate/100;
+    costH+='<table class="data-table" style="margin-top:10px;border:2px dashed #e2a028;background:#fffbf0"><tbody>';
+    costH+='<tr><td style="font-weight:600;color:#b7791f">📊 税率</td><td>'+taxRate+'%</td><td colspan="2">税额：<span style="color:var(--danger);font-weight:700">¥ '+fmt(Math.round(taxAmount))+'</span>（= 报价总计 ¥'+fmt(total)+' × '+taxRate+'%）</td><td colspan="3"></td></tr>';
+    costH+='<tr><td style="font-weight:600;color:#b7791f">🎨 设计费</td><td style="font-weight:600">¥ '+fmt(Math.round(designFee))+'</td><td colspan="2">设计师提成（'+designCommRate+'%）：<span style="color:var(--primary);font-weight:700">¥ '+fmt(Math.round(designComm))+'</span></td><td colspan="3"></td></tr>';
+    costH+='</tbody></table>';
+    // Summary
+    var totalRevenue=total,totalAllCost=totalCost+totalLabor+taxAmount+designFee,totalProfit=totalRevenue-totalAllCost,totalRate=totalRevenue>0?Math.round(totalProfit/totalRevenue*100):0;
     costH+='<div style="margin-top:12px;background:#f7fafc;border-radius:10px;padding:12px;font-size:13px;line-height:2">';
-    costH+='<div>总物料成本：<span style="color:var(--danger);font-weight:600">'+fmt(Math.round(totalCost))+' 元</span>　|　总人工费：<span style="color:var(--warning);font-weight:600">'+fmt(Math.round(totalLabor))+' 元</span>　|　总成本：<span style="color:var(--danger);font-weight:700">'+fmt(Math.round(totalAllCost))+' 元</span></div>';
-    costH+='<div>总报价：<span style="font-weight:700">'+fmt(totalRevenue)+' 元</span>　|　总毛利：<span style="color:'+(totalProfit>=0?'var(--success)':'var(--danger)')+';font-weight:700">'+fmt(Math.round(totalProfit))+' 元</span>　|　综合利润率：<span style="font-weight:700">'+totalRate+'%</span></div>';
+    costH+='<div>总物料成本：<span style="color:var(--danger);font-weight:600">'+fmt(Math.round(totalCost))+' 元</span>　|　总人工费：<span style="color:var(--warning);font-weight:600">'+fmt(Math.round(totalLabor))+' 元</span>　|　税额：<span style="color:var(--danger);font-weight:600">'+fmt(Math.round(taxAmount))+' 元</span>　|　设计费：<span style="color:var(--warning);font-weight:600">'+fmt(Math.round(designFee))+' 元</span>　|　总成本：<span style="color:var(--danger);font-weight:700">'+fmt(Math.round(totalAllCost))+' 元</span></div>';
+    costH+='<div>总报价：<span style="font-weight:700">'+fmt(totalRevenue)+' 元</span>　|　净毛利：<span style="color:'+(totalProfit>=0?'var(--success)':'var(--danger)')+';font-weight:700">'+fmt(Math.round(totalProfit))+' 元</span>　|　综合利润率：<span style="font-weight:700">'+totalRate+'%</span>　|　设计师提成：<span style="color:var(--primary);font-weight:600">'+fmt(Math.round(designComm))+' 元</span></div>';
     costH+='</div>';
     document.getElementById('aq-cost-section').innerHTML=costH;
 }
 
 function addQuoteItem(){quoteItems.push({name:'',unit:'项',price:0,qty:1,cost:0,costNote:'',labor:''});saveQuoteItems();renderAdQuote()}
+function onInternalParamChange(){renderAdQuote()}
 function recalcRow(i){
     var rows=document.querySelectorAll('#aq-items tbody tr');
     if(!rows[i])return;
@@ -921,7 +941,7 @@ function saveQuoteOrder(){
     if(!quoteItems.length||!quoteItems[0].name){alert('请至少添加一个报价项目');return}
     var total=0,totalCost=0,totalLabor=0;
     var items=quoteItems.map(function(it){var sub=it.price*it.qty;total+=sub;totalCost+=it.cost*it.qty;totalLabor+=(it.labor?parseFloat(it.labor)*it.qty:0);return{name:it.name,unit:it.unit,price:it.price,qty:it.qty,cost:it.cost,costNote:it.costNote,labor:it.labor||''}});
-    var order={id:editingOrderId||Date.now(),client:client,date:document.getElementById('aq-date').value,valid:document.getElementById('aq-valid').value||'30',items:items,total:total,totalCost:totalCost,totalLabor:totalLabor,status:'draft',payments:[],createdAt:editingOrderId?(getQuoteOrders().find(function(o){return o.id===editingOrderId})||{}).createdAt:Date.now(),confirmedAt:null};
+    var order={id:editingOrderId||Date.now(),client:client,date:document.getElementById('aq-date').value,valid:document.getElementById('aq-valid').value||'30',items:items,total:total,totalCost:totalCost,totalLabor:totalLabor,taxRate:parseFloat(document.getElementById('aq-tax-rate').value)||0,designFee:parseFloat(document.getElementById('aq-design-fee').value)||0,designCommission:parseFloat(document.getElementById('aq-design-commission').value)||0,status:'draft',payments:[],createdAt:editingOrderId?(getQuoteOrders().find(function(o){return o.id===editingOrderId})||{}).createdAt:Date.now(),confirmedAt:null};
     var orders=getQuoteOrders();
     if(editingOrderId){var idx=orders.findIndex(function(o){return o.id===editingOrderId});if(idx>=0)orders[idx]=order}else{orders.push(order)}
     saveQuoteOrders(orders);
@@ -936,6 +956,9 @@ function clearQuoteForm(){
     saveQuoteItems();
     document.getElementById('aq-client').value='';
     document.getElementById('aq-valid').value='30';
+    document.getElementById('aq-tax-rate').value='';
+    document.getElementById('aq-design-fee').value='';
+    document.getElementById('aq-design-commission').value='';
     document.getElementById('btn-new-quote').style.display='none';
     var bar=document.getElementById('qo-editing-bar');bar.style.display='none';
     renderAdQuote();
@@ -950,6 +973,9 @@ function loadQuoteOrder(id){
     document.getElementById('aq-client').value=order.client;
     document.getElementById('aq-date').value=order.date;
     document.getElementById('aq-valid').value=order.valid;
+    document.getElementById('aq-tax-rate').value=order.taxRate||'';
+    document.getElementById('aq-design-fee').value=order.designFee||'';
+    document.getElementById('aq-design-commission').value=order.designCommission||'';
     document.getElementById('btn-new-quote').style.display='';
     document.getElementById('qo-editing-bar').innerHTML='<div>正在编辑：'+escHtml(order.client)+' 的报价单</div><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:11px;cursor:pointer" onclick="clearQuoteForm()">取消编辑</button>';
     document.getElementById('qo-editing-bar').style.display='flex';
